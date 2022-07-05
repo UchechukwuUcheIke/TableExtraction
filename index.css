@@ -1,0 +1,135 @@
+#id {
+	align-content: left;
+	width: 800px;
+	height: 450px;
+
+	border-right: 10px;
+	border-color: black;
+	margin: 10px;
+
+}
+
+#video {
+	position: absolute;
+	left: 80px;
+	top: 80px;
+	z-index: 2;
+	width: 800px;
+	height: 450px;
+}
+
+#glass-pane {
+    position: absolute;
+    width: 800px;
+    height: 450px;
+    margin: 0;
+    padding: 0;
+    top: 0;
+    left: 0;
+    opacity: 0.5;
+    background-color: black;
+    z-index: 12;
+}
+
+#canvas {
+	position: absolute;
+	background-color: lightblue;
+	width: 800px;
+	height: 450px;
+
+	left: 80px;
+	top: 800px;
+	z-index: 0;
+}
+
+.context-menu {
+        position: absolute;
+        text-align: center;
+        background: lightgray;
+        border: 1px solid black;
+}
+  
+.context-menu ul {
+        padding: 0px;
+        margin: 0px;
+        min-width: 150px;
+        list-style: none;
+}
+  
+.context-menu ul li {
+        padding-bottom: 7px;
+        padding-top: 7px;
+        border: 1px solid black;
+ }
+  
+.context-menu ul li a {
+        text-decoration: none;
+        color: black;
+}
+  
+.context-menu ul li:hover {
+        background: darkgray;
+}
+
+.container {
+	border-radius: 5px;
+	width:  800px;
+	height: 800px;
+	background:  #FFBC97;
+	position: relative;
+}
+
+.resizeable {
+	position: absolute;
+	border: 2px solid #533535;
+	width: 100px;
+	height: 100px;
+	border-radius: 3px;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	min-width: 15px;
+	min-height: 15px;
+}
+
+.resizer {
+	position: absolute;
+	background: black;
+	z-index: -1;
+}
+
+.resizer-r {
+	cursor: col-resize;
+	height: 100%;
+	right: 0;
+	top: 0;
+	width: 5px;
+	z-index: 10;
+}
+
+.resizer-l {
+	cursor: col-resize;
+	height: 100%;
+	left: 0;
+	top: 0;
+	width: 5px;
+	z-index: 10;
+}
+
+.resizer-t {
+	cursor: row-resize;
+	height: 5px;
+	right: 0;
+	top: 0;
+	width: 100%;
+	z-index: 10;
+}
+
+.resizer-b {
+	cursor: row-resize;
+	height: 5px;
+	left: 0;
+	bottom: 0;
+	width: 100%;
+	z-index: 10;
+}
