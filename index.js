@@ -4,7 +4,7 @@ import './index.css';
 import { Resizeable } from './Components/Resizeable';
 import { ContextMenu } from './Components/ContextMenu';
 import { Menu } from './Components/AppMenu';
-import { getAveragePixelBrightness, turnImageBinary, convertCTXToColorArray, getColumnEdgeCount, getRowEdgeCount, getMode, getSubsections } from './Components/EdgeTextExtraction.mjs';
+import { helperExtractText, getAveragePixelBrightness, turnImageBinary, convertCTXToColorArray, getColumnEdgeCount, getRowEdgeCount, getMode, getSubsections } from './Components/EdgeTextExtraction.mjs';
 
 import testvideomp4 from "./TestVideo.mp4";
 import testvideo2mp4 from "./TestVideo2.0.mp4"
@@ -21,10 +21,16 @@ const { createWorker, PSM } = require("tesseract.js");
 
 // ========================================
 
+const root = ReactDOM.createRoot(
+  document.getElementById("root")
+);
+
 const vidWidth = 800;
 const vidHeight = 450;
 
 // Disables default right click option
+
+
 
 export default function VideoApp() {
   const canvasRef = useRef(null);
@@ -48,6 +54,8 @@ export default function VideoApp() {
 
     return canvas;
   }
+
+
 
   function formRectanglesFromImage() {
     const PIXEL_DIFF_THRESHOLD = 100;
@@ -97,7 +105,7 @@ export default function VideoApp() {
       if (subsection.IsText === true) {
         ctx.strokeStyle = 'red';
         ctx.lineWidth = 1;
-        ctx.strokeRect(0, subsection.Start, 1920, (subsection.End - subsection.Start));
+        //ctx.strokeRect(0, subsection.Start, 1920, (subsection.End - subsection.Start));
       }
     }
 
@@ -106,7 +114,7 @@ export default function VideoApp() {
       if (subsection.IsText === true) {
         ctx.strokeStyle = 'red';
         ctx.lineWidth = 1;
-        ctx.strokeRect(subsection.Start, 0, (subsection.End - subsection.Start), 1080);
+        //ctx.strokeRect(subsection.Start, 0, (subsection.End - subsection.Start), 1080);
       }
     }
     
@@ -126,7 +134,7 @@ export default function VideoApp() {
                               height: (rowSubsection.End - rowSubsection.Start) + rowBuffer * 2,
                               }
             
-            ctx.strokeRect(rectangle.left, rectangle.top, rectangle.width, rectangle.height);
+            //ctx.strokeRect(rectangle.left, rectangle.top, rectangle.width, rectangle.height);
             rectangles.push(rectangle);
           }
         }
@@ -136,37 +144,8 @@ export default function VideoApp() {
     return [rectangles, numRows, numColumns];
   }
 
-  function extractText(rectangles, numRows, numCols, callback) {
-    const worker = createWorker();
-    const canvas = canvasRef.current
-    console.log(rectangles)
-    const ctx = canvas.getContext("2d");
-    //ctx.strokeRect(rectangle.top, rectangle.left, rectangle.width, rectangle.height);
-
-    console.log("Starting Read");
-    (async () => {
-      await worker.load();
-      await worker.loadLanguage('eng');
-      await worker.initialize('eng');
-      await worker.setParameters({
-        tessedit_pageseg_mode: PSM.SINGLE_COLUMN,
-      });
-      const values = [];
-
-      for (let i = 0; i < rectangles.length; i++) {
-        const { data: { text } } = await worker.recognize(canvas, { rectangle: rectangles[i] });
-        values.push(text.slice(0, -1))
-      }
-      console.log(values);
-      console.log("Done");
-
-      await worker.terminate();
-
-      if (callback != null) {
-        callback(values, numRows, numCols);
-      }
-      
-    })();
+  async function extractText(rectangles) {
+    return await helperExtractText(canvasRef.current, rectangles)
   }
 
   function copyTextToClipboard(text) { // Wrapper function needed to keep document in focus while running Tesseract code
@@ -186,7 +165,7 @@ export default function VideoApp() {
         Sorry no video
 
       </video>
-      <canvas id = "canvas" ref={canvasRef} width="1920" height="1080" style={{"left": "80px","top": "800px",
+      <canvas id = "canvas" ref={canvasRef} width="1920" height="1080" style={{"left": "80px","top": "80px",
                                                     "width": "800px", "height": "450px"}}>
 
       </canvas>
@@ -194,13 +173,11 @@ export default function VideoApp() {
     </div>
   );
 } 
-/** 
-const root = ReactDOM.createRoot(
-  document.getElementById("root")
-);
+
+
 
 root.render(<VideoApp />);
-**/
+
 
 //<canvas ref = {canvasRef} id="canvas" style={{"top": 80, "left": 80}}> </canvas>
 //<Resizeable theRef = {ref} width={vidWidth} height={vidHeight}/>
