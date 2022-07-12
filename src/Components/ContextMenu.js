@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import {useState} from 'react';
 export function ContextMenu(props) {
 
     const [ display, setDisplay ] = useState('none');
@@ -22,7 +22,7 @@ export function ContextMenu(props) {
     }
   
     function handleButtonClick() {
-      props.displayAppMenu();
+      props.setAppMenuDisplay("block");
     } 
   
     document.onclick = hideMenu;

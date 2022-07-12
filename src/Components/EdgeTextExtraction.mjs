@@ -16,7 +16,7 @@
   **/
 import { createWorker, PSM } from "tesseract.js";
  
- const worker = createWorker();
+
  
  
 
@@ -25,10 +25,24 @@ import { createWorker, PSM } from "tesseract.js";
  
  //const assert = require('node:assert');
 
- export async function helperExtractText(image, rectangles) {
+ export async function helperExtractText(image, rectangles, psmMode, setExtractionLog) {
   // image is a default parameter used so we can do testing
+  let worker = null;
+  const multipleExtractions = rectangles.length > 1;
 
-  const worker = createWorker();
+  if (setExtractionLog)  {
+    worker = createWorker({
+        logger: (m) => {
+          setExtractionLog({
+            status: m.status,
+            progress: m.progress,
+          });
+        },
+      });
+  } else {
+    worker = createWorker();
+  }
+
   const canvas = image
   console.log(rectangles)
   const ctx = canvas.getContext("2d");
@@ -39,13 +53,23 @@ import { createWorker, PSM } from "tesseract.js";
   await worker.loadLanguage('eng');
   await worker.initialize('eng');
   await worker.setParameters({
-    tessedit_pageseg_mode: PSM.SINGLE_COLUMN,
+    tessedit_pageseg_mode: psmMode,
   });
   const values = [];
 
   for (let i = 0; i < rectangles.length; i++) {
     const { data: { text } } = await worker.recognize(canvas, { rectangle: rectangles[i] });
     values.push(text.slice(0, -1))
+
+    if (multipleExtractions) {
+      const progress = (i + 1) / rectangles.length;
+      const status = `Cell ${i + 1}`;
+
+      setExtractionLog({
+        status: status,
+        progress: progress,
+      });
+    }
   }
   console.log(values);
   await worker.terminate();
@@ -175,6 +199,41 @@ export class Table {
      }
  
      return output;
+   }
+
+   convertToJSON() {
+    if (this.rows < 2) {
+      return "{}";
+    }
+
+    let output = "["
+    const headings = this.contents[0];
+
+    for (let row = 1; row < this.rows; row++) {
+      output = output.concat("{");
+      for (let col = 0; col < this.columns; col++) {
+        const cell = this.contents[row][col];
+        const field = headings[col];
+        
+
+        if (col != this.columns - 1) {
+          output = output.concat(`"${field}":"${cell}",`);
+        } else {
+          output = output.concat(`"${field}":"${cell}"`);
+        }
+      }
+
+      if (row != this.rows - 1) {
+        output = output.concat("},");
+      } else {
+        output = output.concat("}");
+      }
+      
+    }
+
+    output = output.concat("]");
+
+    return output;
    }
 
    convertToHTML() {

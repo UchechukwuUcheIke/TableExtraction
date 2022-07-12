@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-
+import { useState, useEffect, useRef } from 'react';
+import "./Resizeable.css"
 export function GlassPane() {
     const [ isDragging, setIsDragging ] = useState(false);
     const [ diffX, setDiffX ] = useState(0);
@@ -55,10 +55,7 @@ export function Resizeable(props) {
       let height = parseInt(styles.height, 10);
       let x = 0;
       let y = 0;
-  
-      resizeableEle.style.top = "50px";
-      resizeableEle.style.left = "0px";
-  
+      
       // Right resize
       const onMouseMoveRightResize = (event) => {
         const styles = window.getComputedStyle(resizeableEle);
@@ -193,8 +190,10 @@ export function Resizeable(props) {
         resizerLeft.removeEventListener("mousedown", onMouseDownLeftResize);
       };
     }, []);
+
+    console.log(props.resizeableStyle)
     return (
-        <div ref={props.theRef} className="resizeable" style={{"width": props.width, "height": props.height}}>
+        <div ref={props.theRef} style={props.resizeableStyle} className="resizeable" >
           <div ref={refLeft} className="resizer resizer-l"></div>
           <div ref={refTop} className="resizer resizer-t"></div>
           <div ref={refRight} className="resizer resizer-r"></div>
