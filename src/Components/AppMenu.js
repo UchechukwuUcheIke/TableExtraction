@@ -1,5 +1,6 @@
 import { useRef, Fragment } from 'react';
 import { Resizeable, GlassPane } from './Resizeable';
+import { Frame } from "./Frame.js"
 import './AppMenu.css';
 import { Table } from './EdgeTextExtraction.mjs';
 const { PSM } = require("tesseract.js");
@@ -99,21 +100,17 @@ function renderResizeable(resizeableRef, videoRef) {
     }
 
     const styles = window.getComputedStyle(video);
+    
 
-    const width = styles.width;
-    const height = styles.height;
-    const minXPosition = styles.left;
-    const maxXPosition = styles.right;
-    const minYPosition = styles.top;
-    const maxYPosition = styles.bottom;
-    console.log(minXPosition)
-    console.log(minYPosition)
-    console.log(width)
-    console.log(height)
+    const videoWidth = parseInt(styles.width, 10);
+    const videoHeight = parseInt(styles.height, 10);
+    const videoTop = parseInt(styles.top, 10);
+    const videoLeft = parseInt(styles.left, 10);
+    const parentDimensions = {width: videoWidth, height: videoHeight, top: videoTop, left: videoLeft};
+    console.log(parentDimensions);
     return (
-        <Resizeable theRef = {resizeableRef} 
-        resizeableStyle={{position: 'absolute', top: minYPosition, left: minXPosition, width:width, height: height}}
-        minXPosition={minXPosition} maxXPosition={maxXPosition} minYPosition={minYPosition} maxYPosition={maxYPosition}/>
+        <Frame frameRef = {resizeableRef} 
+        parentDimensions = {parentDimensions}/>
     )
 }
 
@@ -313,8 +310,13 @@ export function Menu(props) {
     }
 
     function onExit() {
+        console.log(processFSM);
         processFSM.dispatch("reset");
-        const newProcessFSM = Object.assign({}, processFSM);
+        const newProcessFSM = {state: processFSM.state,
+            transitions: {
+                ...processFSM.transitions
+            },
+            dispatch: processFSM.dispatch};
         props.setProcessFSM(newProcessFSM);
         props.setAppMenuDisplay("none");
     }
@@ -334,12 +336,20 @@ export function Menu(props) {
 
     function onCancelOperation() {
         processFSM.dispatch("cancel")
-        const newProcessFSM = Object.assign({}, processFSM);
+        const newProcessFSM = {state: processFSM.state,
+            transitions: {
+                ...processFSM.transitions
+            },
+            dispatch: processFSM.dispatch};
         props.setProcessFSM(newProcessFSM);
     }
     function onClearOperation() {
         processFSM.dispatch("reset");
-        const newProcessFSM = Object.assign({}, processFSM);
+        const newProcessFSM = {state: processFSM.state,
+            transitions: {
+                ...processFSM.transitions
+            },
+            dispatch: processFSM.dispatch};
         props.setProcessFSM(newProcessFSM);
     }
 
@@ -349,7 +359,7 @@ export function Menu(props) {
 
     return (
         <Fragment>
-            <div id = "Menu" style={{"display": props.display}}>
+            <div id = "Menu">
                 <div id = "Heading">   
                     <h1> Option Select </h1>
                 </div>

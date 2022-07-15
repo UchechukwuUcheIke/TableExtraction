@@ -196,17 +196,16 @@ export default function VideoApp() {
     return await helperExtractText(canvasRef.current, rectangles, psmMode, setExtractionLog);
   }
 
-  function copyTextToClipboard(text) { // Wrapper function needed to keep document in focus while running Tesseract code
-    navigator.clipboard.writeText(text);  
-  }
   return (
     <div>
       <ContextMenu setAppMenuDisplay={setAppMenuDisplay}/>
+
+      {appMenuDisplay === "block" &&
       <Menu processFSM = {processFSM} setProcessFSM ={setProcessFSM} extractedText = {extractedText} setExtractedText = {setExtractedText}
        extractedTable = {extractedTable} setExtractedTable = {setExtractedTable} extractionLog = {extractionLog} setExtractionLog = {setExtractionLog}
-       display={appMenuDisplay} canvasRef={canvasRef} videoRef={videoRef} displayCanvasRef={displayCanvasRef}
+       canvasRef={canvasRef} videoRef={videoRef} displayCanvasRef={displayCanvasRef}
        setAppMenuDisplay={setAppMenuDisplay}
-       resizeableRef={resizeableRef} drawCanvas={drawCanvas} extractText={extractText} formRectanglesFromImage={formRectanglesFromImage}/>
+       resizeableRef={resizeableRef} drawCanvas={drawCanvas} extractText={extractText} formRectanglesFromImage={formRectanglesFromImage}/>}
       
       <video ref={videoRef} id = "video" width={vidWidth} height={vidHeight} controls autoPlay loop muted>
         <source src={testvideo3mp4} type="video/mp4" />
@@ -215,7 +214,7 @@ export default function VideoApp() {
         Sorry no video
 
       </video>
-      <canvas id = "canvas" ref={canvasRef} width="1920" height="1080" style={{"left": "80px","top": "800px",
+      <canvas id = "canvas" ref={canvasRef} width="1920" height="1080" style={{"left": "80px","top": "80px",
                                                     "width": "800px", "height": "450px"}}>
 
       </canvas>
@@ -225,8 +224,6 @@ export default function VideoApp() {
 } 
 
 let container = null;
-
-
 
 document.addEventListener('DOMContentLoaded', function(event) {
   if (!container) {

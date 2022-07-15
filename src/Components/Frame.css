@@ -1,0 +1,46 @@
+.frame {
+	position: absolute;
+	display: flex;
+	border-style: dotted;
+	border-width: 5px;
+    z-index: 10000000;
+    pointer-events: none;
+}
+
+.frame button {
+	position: absolute;
+	width: 10%;
+	height: 10%;
+    pointer-events: auto;
+    opacity: 0.5;
+}
+
+.frame button:hover {
+    opacity: 1;
+}
+
+.frame #center {
+	position:absolute;
+	top: 40%;
+	left: 45%;
+}
+
+.frame #topLeft {
+    left: 0px;
+    top: 0px;
+}
+
+.frame #topRight {
+    right: 0px;
+    top: 0px;
+}
+
+.frame #bottomLeft {
+    left: 0px;
+    bottom: 0px;
+}
+
+.frame #bottomRight {
+    right: 0px;
+    bottom: 0px;
+}

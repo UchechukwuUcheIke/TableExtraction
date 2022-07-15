@@ -45,7 +45,7 @@ import { createWorker, PSM } from "tesseract.js";
 
   const canvas = image
   console.log(rectangles)
-  const ctx = canvas.getContext("2d");
+  //const ctx = canvas.getContext("2d");
   //ctx.strokeRect(rectangle.top, rectangle.left, rectangle.width, rectangle.height);
 
   console.log("Starting Read");
