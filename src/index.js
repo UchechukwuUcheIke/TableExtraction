@@ -12,8 +12,10 @@ import testvideo3mp4 from "./TestVideo3.0.mp4"
 import testvideowebm from "./TestVideo.webm";
 import testvideogv from "./TestVideo.ogv";
 import tableSample from "./TableSample.jpg"
+import eng_bw from "./eng_bw.png"
 import tableSampleCleaned from "./TableSampleCleaned.png";
 import msTableSample from "./MSWordTableSample.png";
+import image1 from "./Testing/TestingImages/Image1.png";
 
 
 
@@ -33,75 +35,65 @@ export default function VideoApp() {
   const videoRef = useRef(null);
   const resizeableRef = useRef(null);
   const displayCanvasRef = useRef(null);
+  
   const [extractionLog, setExtractionLog] = useState(0);
   const [appMenuDisplay, setAppMenuDisplay] = useState("none");
   const [extractedText, setExtractedText] = useState("");
-  const [processFSM, setProcessFSM] = useState(Object.create(machine));
   const [extractedTable, setExtractedTable] = useState(null);
+  const [extractionFocus, setExtractionFocus] = useState(null);
 
 
-  function drawCanvas(canvasE) {
-    const video = videoRef.current;
-    const resizeableElement = resizeableRef.current;
+  function drawCanvas() {
+    //const extractionFocus = extractionFocus; // The image or video being drawn on the canvas
+    const resizeableElement = resizeableRef.current; // A Frame around which the image is drawn into the canvas
     const canvas = canvasRef.current;
 
-    const videoImageWidth = video.width;
-    const videoImageHeight = video.height;
-    const canvasImageWidth = canvas.width;
-    const canvasImageHeight = canvas.height;
+    let focusImageWidth;
+    let focusImageHeight;
+    if (extractionFocus.tagName === "VIDEO") { // Sets the focusImageWidth/Height to be the actual resolution of the element focused on
+      focusImageWidth = extractionFocus.videoWidth;
+      focusImageHeight = extractionFocus.videoHeight;
+    } else if (extractionFocus.tagName === "IMG") {
+      focusImageWidth = extractionFocus.naturalWidth;
+      focusImageHeight = extractionFocus.naturalHeight;      
+    } else {
+      focusImageWidth = extractionFocus.width;
+      focusImageHeight = extractionFocus.height;   
+    }
     
+    // Collect CSS style information for scaling between actual resolution and apparent resolution
     const resizeableElementStyle = getComputedStyle(resizeableElement)
-    const videoStyle = getComputedStyle(video);
+    const focusStyle = getComputedStyle(extractionFocus);
     const resizeableTop = parseInt(resizeableElementStyle.top, 10);
-    const videoTop = parseInt(videoStyle.top, 10);
+    const focusTop = parseInt(focusStyle.top, 10);
     const resizeableLeft = parseInt(resizeableElementStyle.left, 10);
-    const videoLeft = parseInt(videoStyle.left, 10);
+    const focusLeft = parseInt(focusStyle.left, 10);
     const resizeableWidth = parseInt(resizeableElementStyle.width, 10);
     const resizeableHeight = parseInt(resizeableElementStyle.height, 10);
-    const videoWidth = parseInt(videoStyle.width, 10);
-    const videoHeight = parseInt(videoStyle.height, 10);
+    const focusWidth = parseInt(focusStyle.width, 10);
+    const focusHeight = parseInt(focusStyle.height, 10);
 
-    console.log(`Resizeable Top: ${resizeableTop}`);
-    console.log(`Video Top: ${videoTop}`);
-    console.log(`Resizeable Left: ${resizeableLeft}`);
-    console.log(`Video Left: ${videoLeft}`);
+    // Scaling calculations between the apparent resolution of the extractionFocus to its actual resolution
+    const videoToVideoImageScalingWidth = focusImageWidth / focusWidth;
+    const videoToVideoImageScalingHeight = focusImageHeight / focusHeight;
 
-    const videoToVideoImageScalingWidth = videoImageWidth / videoWidth;
-    const videoToVideoImageScalingHeight = videoImageHeight / videoHeight;
+    const destinationTop = (resizeableTop - focusTop) * videoToVideoImageScalingHeight;
+    const destinationLeft = (resizeableLeft - focusLeft) * videoToVideoImageScalingWidth;
+    const destinationWidth = resizeableWidth * videoToVideoImageScalingWidth;
+    const destinationHeight = resizeableHeight * videoToVideoImageScalingHeight;
 
-    console.log(`video To Video Image Scaling Width : ${videoToVideoImageScalingWidth }`)
-    const videoToCanvasScalingWidth = canvasImageWidth / videoImageWidth;
-    const videoToCanvasScalingHeight = canvasImageHeight / videoImageHeight;
+    // Adjust canvas actual resolution and apparent size to match dimensions needed
+    canvas.width = destinationWidth;
+    canvas.height = destinationHeight;
+    canvas.style.width = `${destinationWidth}px`; // 'px' added to abide by css style rules
+    canvas.style.height = `${destinationHeight}px`;
 
-    const destinationTop = (resizeableTop - videoTop) * videoToVideoImageScalingHeight  * videoToCanvasScalingHeight;
-    const destinationLeft = (resizeableLeft - videoLeft) * videoToVideoImageScalingWidth  * videoToCanvasScalingWidth;
-    const sourceTop = (resizeableTop - videoTop) * videoToVideoImageScalingHeight ;
-    const sourceLeft = (resizeableLeft - videoLeft) * videoToVideoImageScalingWidth ;
-
-    console.log(`Source Top: ${sourceTop}`);
-    console.log(`Source Left: ${sourceLeft}`);
-
-    const destinationWidth = resizeableWidth * videoToVideoImageScalingWidth * videoToCanvasScalingWidth;
-    const destinationHeight = resizeableHeight * videoToVideoImageScalingHeight * videoToCanvasScalingHeight;
-    const sourceWidth = resizeableWidth * videoToVideoImageScalingWidth;
-    const sourceHeight = resizeableHeight * videoToVideoImageScalingHeight;
-
-    console.log(sourceTop);
-    console.log(sourceLeft);
-    console.log(destinationWidth);
-    console.log(destinationHeight);
+    // Drawing scaled image on canvas
     const ctx = canvas.getContext("2d");
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, canvasImageWidth, canvasImageHeight);
-
-    // I have no idea why "1.5" makes it work, it just does. I'm not taking this headache anymore
-    ctx.drawImage(video, sourceLeft / 1.5, sourceTop / 1.5, sourceWidth, sourceHeight,
-        destinationLeft, destinationTop, destinationWidth * 1.5, destinationHeight * 1.5); 
+    ctx.drawImage(extractionFocus, destinationLeft, destinationTop); 
 
     return canvas;
   }
-
-
 
   function formRectanglesFromImage() {
     const PIXEL_DIFF_THRESHOLD = 100;
@@ -109,7 +101,7 @@ export default function VideoApp() {
     const CANVAS_HEIGHT = 1080;
     const SUBSECTION_TOLERANCE = 40;
 
-    const video = videoRef.current;
+    const video = extractionFocus
     const canvas  = canvasRef.current;
     const ctx = canvas.getContext("2d");
 
@@ -192,37 +184,46 @@ export default function VideoApp() {
     return [rectangles, numRows, numColumns];
   }
 
-  async function extractText(rectangles, psmMode) {
-    return await helperExtractText(canvasRef.current, rectangles, psmMode, setExtractionLog);
+  async function extractText(rectangles, psmMode, language) {
+    const extractionLanguage = language || "eng";
+    console.log(extractionLanguage)
+    return await helperExtractText(canvasRef.current, rectangles, psmMode, extractionLanguage, setExtractionLog);
   }
 
   return (
     <div>
-      <ContextMenu setAppMenuDisplay={setAppMenuDisplay}/>
+      <ContextMenu setExtractionFocus={setExtractionFocus} setAppMenuDisplay={setAppMenuDisplay}/>
 
       {appMenuDisplay === "block" &&
-      <Menu processFSM = {processFSM} setProcessFSM ={setProcessFSM} extractedText = {extractedText} setExtractedText = {setExtractedText}
+      <Menu extractedText = {extractedText} setExtractedText = {setExtractedText}
        extractedTable = {extractedTable} setExtractedTable = {setExtractedTable} extractionLog = {extractionLog} setExtractionLog = {setExtractionLog}
-       canvasRef={canvasRef} videoRef={videoRef} displayCanvasRef={displayCanvasRef}
+       canvasRef={canvasRef} videoRef={extractionFocus} displayCanvasRef={displayCanvasRef}
        setAppMenuDisplay={setAppMenuDisplay}
-       resizeableRef={resizeableRef} drawCanvas={drawCanvas} extractText={extractText} formRectanglesFromImage={formRectanglesFromImage}/>}
+       resizeableRef={resizeableRef} drawCanvas={drawCanvas} extractText={extractText} formRectanglesFromImage={formRectanglesFromImage}
+       extractionFocus = {extractionFocus} setExtractionFocus={setExtractionFocus}/>}
       
-      <video ref={videoRef} id = "video" width={vidWidth} height={vidHeight} controls autoPlay loop muted>
+      <video  id = "video" width={vidWidth} height={vidHeight} controls autoPlay loop muted>
         <source src={testvideo3mp4} type="video/mp4" />
         <source src={testvideowebm} type="video/webm" />
         <source src={testvideogv} type="video/ogg" />
         Sorry no video
 
       </video>
-      <canvas id = "canvas" ref={canvasRef} width="1920" height="1080" style={{"left": "80px","top": "80px",
+
+      <canvas id = "canvas" ref={canvasRef} width="1920" height="1080"  style={{"left": "1000px","top": "80px",
                                                     "width": "800px", "height": "450px"}}>
 
       </canvas>
+
+      <img id = "image" src = {image1} style={{"position":"absolute", "left": "80px","top": "900px",
+                                                    "width": "1920px", "height": "1080px"}} />
       
     </div>
   );
 } 
 
+// <img src={eng_bw} alt="Girl in a jacket" width="800" height="450" style={{"position" : "absolute", "left": "80px","top": "600px", "width": "800px", "height": "450px"}}/> 
+//ref={videoRef}
 let container = null;
 
 document.addEventListener('DOMContentLoaded', function(event) {

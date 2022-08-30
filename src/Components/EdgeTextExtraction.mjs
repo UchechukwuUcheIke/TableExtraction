@@ -25,7 +25,7 @@ import { createWorker, PSM } from "tesseract.js";
  
  //const assert = require('node:assert');
 
- export async function helperExtractText(image, rectangles, psmMode, setExtractionLog) {
+ export async function helperExtractText(image, rectangles, psmMode, extractionLanguage, setExtractionLog) {
   // image is a default parameter used so we can do testing
   let worker = null;
   const multipleExtractions = rectangles.length > 1;
@@ -50,8 +50,8 @@ import { createWorker, PSM } from "tesseract.js";
 
   console.log("Starting Read");
   await worker.load();
-  await worker.loadLanguage('eng');
-  await worker.initialize('eng');
+  await worker.loadLanguage(extractionLanguage);
+  await worker.initialize(extractionLanguage);
   await worker.setParameters({
     tessedit_pageseg_mode: psmMode,
   });

@@ -1,5 +1,6 @@
-import { useRef, Fragment } from 'react';
+import { useRef, useState, Fragment,  } from 'react';
 import { Resizeable, GlassPane } from './Resizeable';
+import { DropDownList } from './DropDownList';
 import { Frame } from "./Frame.js"
 import './AppMenu.css';
 import { Table } from './EdgeTextExtraction.mjs';
@@ -10,19 +11,44 @@ export const machine = {
     transitions: {
         START: {
             extractTable() {
-                this.state = 'EXTRACTING_TABLE'
+                this.state = 'SELECT_TABLE_EXTRACTION_STYLE'
             },
             saveFrame() {
                 this.state = 'SAVING_FRAME_IMAGE'
             },
             extractText() {
-                this.state = 'EXTRACTING_TEXT'
+                this.state = 'SELECT_TEXT_EXTRACTION_STYLE'
             },
             reset() {
                 this.state = "START";
             }
         },
-        EXTRACTING_TABLE: {
+        SELECT_TABLE_EXTRACTION_STYLE: {
+            extractAsNormal() {
+                this.state = 'EXTRACTING_TABLE_AS_NORMAL';
+            },
+            extractAsNumerical() {
+                this.state = 'EXTRACTING_TABLE_AS_NUMERICAL';
+            },
+            cancel() {
+                this.state = 'START'
+            },
+            reset() {
+                this.state = "START";
+            }
+        },
+        EXTRACTING_TABLE_AS_NORMAL: {
+            finishExtractingTable() {
+                this.state = 'SELECT_TABLE_FORMAT';
+            },
+            cancel() {
+                this.state = 'START'
+            },
+            reset() {
+                this.state = "START";
+            }
+        },
+        EXTRACTING_TABLE_AS_NUMERICAL: {
             finishExtractingTable() {
                 this.state = 'SELECT_TABLE_FORMAT';
             },
@@ -55,12 +81,37 @@ export const machine = {
                 this.state = "START";
             }
         },
-        EXTRACTING_TEXT: {
-            finishTextExtraction() {
+        SELECT_TEXT_EXTRACTION_STYLE: {
+            extractAsNormal() {
+                this.state = 'EXTRACTING_TEXT_AS_NORMAL';
+            },
+            extractAsNumerical() {
+                this.state = 'EXTRACTING_TEXT_AS_NUMERICAL';
+            },
+            cancel() {
+                this.state = 'START'
+            },
+            reset() {
+                this.state = "START";
+            }
+        },
+        EXTRACTING_TEXT_AS_NORMAL: {
+            finishExtractingText() {
                 this.state = 'FINISH_TEXT_EXTRACTION';
             },
             cancel() {
-                this.state = 'START';
+                this.state = 'START'
+            },
+            reset() {
+                this.state = "START";
+            }
+        },
+        EXTRACTING_TEXT_AS_NUMERICAL: {
+            finishExtractingText() {
+                this.state = 'FINISH_TEXT_EXTRACTION';
+            },
+            cancel() {
+                this.state = 'START'
             },
             reset() {
                 this.state = "START";
@@ -93,8 +144,34 @@ export const machine = {
     },
 };
 
+function convertToStandardNotation(textValues) {
+    const length = textValues.length;
+    const result = new Array(length);
+
+    for (let i = 0; i < textValues.length; i++) {
+        const text = textValues[i];
+        const textLength = text.length;
+        const exponentIdx = text.indexOf("e");
+        const coefficient = text.slice(0, exponentIdx);
+        const exponent = text.slice(exponentIdx + 1, textLength);
+        console.log(coefficient);
+        console.log(exponent);
+        if (exponent === "" || coefficient === "") { // Can't convert this, just return the old text value
+            result[i] = text;
+        } else {
+            const coefficentValue = parseFloat(coefficient, 10);
+            const exponentValue = parseFloat(exponent, 10);
+            const value = coefficentValue * (10 ** exponentValue);
+            console.log(value);
+            result[i] = value.toString();
+        }
+    }
+
+    return result;
+}
+
 function renderResizeable(resizeableRef, videoRef) {
-    const video = videoRef.current;
+    const video = videoRef;
     if (video === null) {
         return null;
     }
@@ -115,12 +192,13 @@ function renderResizeable(resizeableRef, videoRef) {
 }
 
 export function Menu(props) {
-    const processFSM = props.processFSM;
+    const processFSMRef = useRef(Object.create(machine));
     const videoRef = props.videoRef;
     const canvasRef = props.canvasRef;
     const resizeableRef = props.resizeableRef;
     const extractionLog = props.extractionLog;
     const jsonCheckboxRef = useRef(null);
+    const [extractionLanguage, setExtractionLanguage] = useState("eng")
 
 
     function onScreenshot() {
@@ -129,21 +207,8 @@ export function Menu(props) {
         props.drawCanvas(canvas);
     }
 
-    async function onScanAsText() {
-
-        if (processFSM.state !== "START") {
-            return;
-        }
-
-        processFSM.dispatch("extractText");
-        let newProcessFSM = {state: processFSM.state,
-            transitions: {
-                ...processFSM.transitions
-            },
-            dispatch: processFSM.dispatch};
-        props.setProcessFSM(newProcessFSM);
-
-        const video = videoRef.current;
+    async function extractText(numericalValues) {
+        const video = videoRef;
         const canvas = canvasRef.current;
         const resizeableElement = resizeableRef.current;
         props.drawCanvas(canvas);
@@ -174,97 +239,153 @@ export function Menu(props) {
                           height: resizeableHeight  * canvasToImageScaling};
         console.log(rectangle);
 
-        const textValues = await props.extractText([rectangle], PSM.SINGLE_BLOCK)
+        const showNumericalValues = numericalValues || false;
+        if (showNumericalValues) {
+            console.log("Showing Numerical Values")
+            var myCanvas = document.getElementById("myCanvas");
+            var ctx = myCanvas.getContext("2d");
+            ctx.font = "250px Arial";
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, 1920, 1080);
+            ctx.fillStyle = 'black';
+            ctx.fillText("3.5e2", 50, 500); 
+
+            
+        }
+        let PSM_MODE = PSM.SPARSE_TEXT;
+        console.log(`PSM Mode: ${PSM_MODE}`);
+        let textValues = await props.extractText([rectangle], PSM_MODE, extractionLanguage);
+
+        if (showNumericalValues) {textValues = convertToStandardNotation(textValues);}
+        
+        console.log(`Converted Text Values: ${textValues}`);
         const extractedText = textValues[0];
-        props.setExtractedText(extractedText);
-
-        processFSM.dispatch("finishTextExtraction")
-        newProcessFSM = {state: processFSM.state,
-            transitions: {
-                ...processFSM.transitions
-            },
-            dispatch: processFSM.dispatch};
-        props.setProcessFSM(newProcessFSM);
-
-        console.log(processFSM.state)
+        
+        return extractedText;
     }
 
-    async function onScanAsTable() {
-        if (processFSM.state !== "START") {
+    async function extractTable(numericalValues) {
+        const showNumericalValues = numericalValues || false;
+        const canvas = canvasRef.current;
+        
+        props.drawCanvas(canvas);
+        const [rectangles, numRows, numCols] = props.formRectanglesFromImage();
+        let textValues = await props.extractText(rectangles, PSM.SINGLE_COLUMN, extractionLanguage);
+
+        if (showNumericalValues) {
+
+            textValues = convertToStandardNotation(textValues);
+        }
+
+        const table = Table.textArrayToTable(textValues, numRows, numCols);
+
+        return table;
+    }
+    
+
+    async function onExtractAsText() {
+        const processFSM = processFSMRef.current;
+
+        if (processFSM.state !== "START" || videoRef == null) {
+            return;
+        }
+
+        processFSM.dispatch("extractText");
+        props.setExtractedText("TBD");
+
+    }
+
+    async function onExtractAsTable() {
+        const processFSM = processFSMRef.current;
+
+        if (processFSM.state !== "START" || videoRef == null) {
             return;
         }
 
         processFSM.dispatch("extractTable")
-        let newProcessFSM = {state: processFSM.state,
-            transitions: {
-                ...processFSM.transitions
-            },
-            dispatch: processFSM.dispatch};
-        props.setProcessFSM(newProcessFSM);
-        console.log(processFSM);
-        const canvas = canvasRef.current;
-        props.drawCanvas(canvas);
-        //FSM.dispatch("extractTable");
-        //props.setProcessState(FSM.state);
+        props.setExtractedText("TBD");
 
-        const [rectangles, numRows, numCols] = props.formRectanglesFromImage();
-
-        const textValues = await props.extractText(rectangles, PSM.SINGLE_COLUMN);
-        const table = Table.textArrayToTable(textValues, numRows, numCols);
-        props.setExtractedTable(table);
-        
         // Update FSM
-        processFSM.dispatch("finishExtractingTable")
-        newProcessFSM = {state: processFSM.state,
-            transitions: {
-                ...processFSM.transitions
-            },
-            dispatch: processFSM.dispatch};
-        props.setProcessFSM(newProcessFSM);
-
         props.setExtractionLog({
             status: '',
             progress: 0,
         })
     }
 
+    async function onExtractAsNormalTable() {
+        const processFSM = processFSMRef.current;
+        processFSM.dispatch("extractAsNormal");
+
+        const table = await extractTable();
+        props.setExtractedTable(table);
+        
+        processFSM.dispatch("finishExtractingTable");
+    }
+
+    async function onExtractAsNumericalTable() {
+        const processFSM = processFSMRef.current;
+        processFSM.dispatch("extractAsNormal");
+
+        const table = await extractTable(true); 
+        props.setExtractedTable(table);
+        
+        processFSM.dispatch("finishExtractingTable");
+    }
+
+    async function onExtractAsNormalText() {
+        const processFSM = processFSMRef.current;
+        processFSM.dispatch("extractAsNormal");
+
+        const extractedText = await extractText();
+        props.setExtractedText(extractedText);
+        
+        processFSM.dispatch("finishExtractingText")
+    }
+
+    async function onExtractAsNumericalText() {
+        const processFSM = processFSMRef.current;
+        processFSM.dispatch("extractAsNumerical");
+
+        const extractedText = await extractText(true);
+        props.setExtractedText(extractedText);
+        
+        processFSM.dispatch("finishExtractingText");
+    }
+
     function onScanAsCSVTable() {
+        const processFSM = processFSMRef.current;
+
         let table = props.extractedTable;
+        console.log(table);
         const extractedText = table.convertToCSV();
         props.setExtractedText(extractedText);
         
         // Update FSM
         console.log(processFSM);
         processFSM.dispatch("finishTableFormatting")
-        const newProcessFSM = {...processFSM,
-            transitions: {
-                ...processFSM.transitions
-            },
-            ...processFSM.dispatch};
-        props.setProcessFSM(newProcessFSM);
 
         console.log(processFSM.state)
     }
 
     function onScanAsHTMLTable() {
+        const processFSM = processFSMRef.current;
+
         //console.log(FSM.state)
         const table = props.extractedTable;
+        console.log(table);
         const extractedText = table.convertToHTML();
         props.setExtractedText(extractedText);
         
         // Update FSM
         
         processFSM.dispatch("finishTableFormatting")
-        const newProcessFSM = {state: processFSM.state,
-            transitions: {
-                ...processFSM.transitions
-            },
-            dispatch: processFSM.dispatch};
-        props.setProcessFSM(newProcessFSM);
+
     }
 
     function onScanAsJSONTable() {
         //console.log(FSM.state)
+        const processFSM = processFSMRef.current;
+         
         let table = props.extractedTable;
         const checkbox = jsonCheckboxRef.current;
 
@@ -285,15 +406,12 @@ export function Menu(props) {
         // Update FSM
         
         processFSM.dispatch("finishTableFormatting");
-        const newProcessFSM = {state: processFSM.state,
-            transitions: {
-                ...processFSM.transitions
-            },
-            dispatch: processFSM.dispatch};
-        props.setProcessFSM(newProcessFSM);
+
     }
 
     function onSaveAsImage() {
+        const processFSM = processFSMRef.current;
+
         if (processFSM.state !== "START") {
             return;
         }
@@ -309,15 +427,13 @@ export function Menu(props) {
         createEl.remove();
     }
 
+
+    
     function onExit() {
+        const processFSM = processFSMRef.current;
         console.log(processFSM);
         processFSM.dispatch("reset");
-        const newProcessFSM = {state: processFSM.state,
-            transitions: {
-                ...processFSM.transitions
-            },
-            dispatch: processFSM.dispatch};
-        props.setProcessFSM(newProcessFSM);
+
         props.setAppMenuDisplay("none");
     }
 
@@ -335,33 +451,45 @@ export function Menu(props) {
     }
 
     function onCancelOperation() {
+        const processFSM = processFSMRef.current;
         processFSM.dispatch("cancel")
-        const newProcessFSM = {state: processFSM.state,
-            transitions: {
-                ...processFSM.transitions
-            },
-            dispatch: processFSM.dispatch};
-        props.setProcessFSM(newProcessFSM);
+        props.setExtractedText("");
     }
     function onClearOperation() {
+        const processFSM = processFSMRef.current;
         processFSM.dispatch("reset");
-        const newProcessFSM = {state: processFSM.state,
-            transitions: {
-                ...processFSM.transitions
-            },
-            dispatch: processFSM.dispatch};
-        props.setProcessFSM(newProcessFSM);
+        props.setExtractedText("");
     }
 
     function onTextAreaChange(e) {
         props.setExtractedText(e.target.value);
     }
 
+    function onLanguageInputChange(e) {
+        const language = e.target.value
+        setExtractionLanguage(language);
+    }
+
+
+    function changeFocus(e) {
+        props.setExtractionFocus(e.target);
+        console.log("click");
+        document.ondblclick = null;
+        const el = document.querySelector('video');
+        el.controls = true;
+    }
+    function onChangeExtractionTarget(e) {
+        document.ondblclick = changeFocus
+        const el = document.querySelector('video');
+        el.controls = false;
+    }
+
     return (
         <Fragment>
             <div id = "Menu">
-                <div id = "Heading">   
+                <div id = "Heading">
                     <h1> Option Select </h1>
+                    
                 </div>
 
                 <div id = "Exit">
@@ -370,16 +498,31 @@ export function Menu(props) {
 
                 <div id = "Options">
 
-                    {processFSM.state === "START" &&
+                    {processFSMRef.current.state === "START" &&
                         <Fragment>
-                            <button onClick={onScanAsText}> Extract Text From Frame </button>
-                            <button onClick={onScanAsTable}> Extract Text As Table </button>
+                            <button onClick={onExtractAsText}> Extract Text From Frame </button>
+                            <button onClick={onExtractAsTable}> Extract Text As Table </button>
                             <button onClick ={onSaveAsImage}> Save Frame as Image </button>
+                            <button onClick = {onChangeExtractionTarget}> Change Extraction Target </button>
+                        </Fragment>
+                    }
+
+                    {processFSMRef.current.state === "SELECT_TABLE_EXTRACTION_STYLE" &&
+                        <Fragment>
+                            <button onClick={onExtractAsNormalTable} > Extract As Normal Table </button>
+                            <button onClick={onExtractAsNumericalTable}> Extract As Numerical Table </button>
+                        </Fragment>
+                    }
+
+                    {processFSMRef.current.state === "SELECT_TEXT_EXTRACTION_STYLE" &&
+                        <Fragment>
+                            <button onClick={onExtractAsNormalText}> Extract As Normal Text </button>
+                            <button onClick={onExtractAsNumericalText}> Extract As Numerical Text </button>
                         </Fragment>
                     }
 
 
-                    {(processFSM.state === "SELECT_TABLE_FORMAT" || processFSM.state === "FINISH_TABLE_FORMATTING") &&
+                    {(processFSMRef.current.state === "SELECT_TABLE_FORMAT" || processFSMRef.current.state === "FINISH_TABLE_FORMATTING") &&
                         <Fragment>
                             <button onClick={onScanAsHTMLTable}> Extract Text As HTML Table </button>
                             <button onClick={onScanAsCSVTable}> Extract Text As CSV Table </button>
@@ -391,19 +534,19 @@ export function Menu(props) {
                         </Fragment>
                     }
 
-                    {processFSM.state !== "START" && processFSM.state !== "FINISH_TEXT_EXTRACTION" &&
-                     processFSM.state !== "FINISH_TABLE_FORMATTING" &&
+                    {processFSMRef.current.state !== "START" && processFSMRef.current.state !== "FINISH_TEXT_EXTRACTION" &&
+                     processFSMRef.current.state !== "FINISH_TABLE_FORMATTING" &&
                         <button onClick={onCancelOperation}> Cancel </button>
                     }
 
-                    {(processFSM.state === "FINISH_TEXT_EXTRACTION" || processFSM.state === "FINISH_TABLE_FORMATTING") &&
+                    {(processFSMRef.current.state === "FINISH_TEXT_EXTRACTION" || processFSMRef.current.state === "FINISH_TABLE_FORMATTING") &&
                         <Fragment>
                             <button onClick={onCopyTextToClipboard}> Copy Text To Clipboard </button>
                             <button onClick={onClearOperation}> Clear Operation </button> 
                         </Fragment>
                     }
 
-                    {processFSM.state === "SAVING_FRAME_IMAGE" &&
+                    {processFSMRef.current.state === "SAVING_FRAME_IMAGE" &&
                         <button onClick={onClearOperation}> Clear Operation </button> 
                     }
 
@@ -411,16 +554,26 @@ export function Menu(props) {
 
                 <div id = "OutputPreview">
 
-                    {(processFSM.state === "FINISH_TABLE_FORMATTING" || processFSM.state === "FINISH_TEXT_EXTRACTION") &&
+                    {(processFSMRef.current.state === "FINISH_TABLE_FORMATTING" || processFSMRef.current.state === "FINISH_TEXT_EXTRACTION") &&
                         <textarea  onChange = {onTextAreaChange} value={props.extractedText}>  </textarea>
                     }
 
-                    {(processFSM.state === "EXTRACTING_TEXT" || processFSM.state === "EXTRACTING_TABLE") &&
+                    {(processFSMRef.current.state === "EXTRACTING_TEXT" || processFSMRef.current.state === "EXTRACTING_TABLE") &&
                         <Fragment>
                             <h2> {extractionLog.status} </h2>
                             <progress value = {extractionLog.progress} max = "1"/>
                         </Fragment>
                     }
+
+                    <label htmlFor="language">Language Setting:</label>
+                    <input list="languages" name="language" id="browser" onChange={onLanguageInputChange} />
+                    <datalist id="languages">
+                        <option value="chi_sim">Chinese - Simplified</option>
+                        <option value="eng">English</option>
+                        <option value="fra">France</option>
+                        <option value="spa">Spanish</option>
+                        <option value="por">Portuguese</option>
+                    </datalist>
                 </div>
 
 
