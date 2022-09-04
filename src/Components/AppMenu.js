@@ -240,6 +240,7 @@ export function Menu(props) {
         console.log(rectangle);
 
         const showNumericalValues = numericalValues || false;
+        /** 
         if (showNumericalValues) {
             console.log("Showing Numerical Values")
             var myCanvas = document.getElementById("myCanvas");
@@ -252,9 +253,10 @@ export function Menu(props) {
 
             
         }
+        */
         let PSM_MODE = PSM.SPARSE_TEXT;
         console.log(`PSM Mode: ${PSM_MODE}`);
-        let textValues = await props.extractText([rectangle], PSM_MODE, extractionLanguage);
+        let textValues = await props.extractText([rectangle], PSM_MODE, extractionLanguage, showNumericalValues);
 
         if (showNumericalValues) {textValues = convertToStandardNotation(textValues);}
         
@@ -270,7 +272,7 @@ export function Menu(props) {
         
         props.drawCanvas(canvas);
         const [rectangles, numRows, numCols] = props.formRectanglesFromImage();
-        let textValues = await props.extractText(rectangles, PSM.SINGLE_COLUMN, extractionLanguage);
+        let textValues = await props.extractText(rectangles, PSM.SINGLE_COLUMN, extractionLanguage, showNumericalValues);
 
         if (showNumericalValues) {
 
@@ -565,15 +567,19 @@ export function Menu(props) {
                         </Fragment>
                     }
 
-                    <label htmlFor="language">Language Setting:</label>
-                    <input list="languages" name="language" id="browser" onChange={onLanguageInputChange} />
-                    <datalist id="languages">
-                        <option value="chi_sim">Chinese - Simplified</option>
-                        <option value="eng">English</option>
-                        <option value="fra">France</option>
-                        <option value="spa">Spanish</option>
-                        <option value="por">Portuguese</option>
-                    </datalist>
+                    {(processFSMRef.current.state === "SELECT_TABLE_EXTRACTION_STYLE" || processFSMRef.current.state === "SELECT_TEXT_EXTRACTION_STYLE") &&
+                        <Fragment>
+                            <label htmlFor="language">Language Setting:</label>
+                            <input list="languages" name="language" id="browser" onChange={onLanguageInputChange} />
+                            <datalist id="languages">
+                                <option value="chi_sim">Chinese - Simplified</option>
+                                <option value="eng">English</option>
+                                <option value="fra">France</option>
+                                <option value="spa">Spanish</option>
+                                <option value="por">Portuguese</option>
+                            </datalist>
+                        </Fragment>
+                    }
                 </div>
 
 

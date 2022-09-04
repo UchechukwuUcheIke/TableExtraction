@@ -25,7 +25,7 @@ import { createWorker, PSM } from "tesseract.js";
  
  //const assert = require('node:assert');
 
- export async function helperExtractText(image, rectangles, psmMode, extractionLanguage, setExtractionLog) {
+ export async function helperExtractText(image, rectangles, psmMode, extractionLanguage, setExtractionLog, isNumericalExtraction) {
   // image is a default parameter used so we can do testing
   let worker = null;
   const multipleExtractions = rectangles.length > 1;
@@ -52,9 +52,17 @@ import { createWorker, PSM } from "tesseract.js";
   await worker.load();
   await worker.loadLanguage(extractionLanguage);
   await worker.initialize(extractionLanguage);
-  await worker.setParameters({
-    tessedit_pageseg_mode: psmMode,
-  });
+
+  if (isNumericalExtraction && isNumericalExtraction === true) {
+    await worker.setParameters({
+      tessedit_char_whitelist: '0123456789*.^e',
+      tessedit_pageseg_mode: psmMode,
+    });
+  } else {
+    await worker.setParameters({
+      tessedit_pageseg_mode: psmMode,
+    });
+  }
   const values = [];
 
   for (let i = 0; i < rectangles.length; i++) {
@@ -408,6 +416,28 @@ export function getColumnEdgeCount(ctxArray, width, height, diffThreshold) {
  
    return edgeCountPerColumn
  }
+
+export function getMinSubectionWidth(subsections) {
+  let minSubsection = subsections[0];
+  let minLength = minSubsection.End - minSubsection.Start
+  const numSubsections = subsections.length
+  for (let i = 1; i < numSubsections; i++) {
+    const currentSubsection = subsections[i];
+
+    if (currentSubsection.isText == false) {
+    
+      const currentLength = currentSubsection.End - currentSubsection.Start;
+
+      if (currentLength < minLength) {
+        minLength = currentLength;
+        minSubsection = currentSubsection;
+      }
+
+    }
+  }
+
+  return minLength;
+}
  
 export function getRowEdgeCount(ctxArray, width, height, diffThreshold) {
    const edgeCountPerRow = new Array(height);

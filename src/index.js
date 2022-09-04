@@ -4,7 +4,7 @@ import './index.css';
 import { Resizeable } from './Components/Resizeable';
 import { ContextMenu } from './Components/ContextMenu';
 import { Menu, machine} from './Components/AppMenu';
-import { helperExtractText, getAveragePixelBrightness, turnImageBinary, convertCTXToColorArray, getColumnEdgeCount, getRowEdgeCount, getMode, getSubsections } from './Components/EdgeTextExtraction.mjs';
+import { helperExtractText, getAveragePixelBrightness, turnImageBinary, convertCTXToColorArray, getColumnEdgeCount, getRowEdgeCount, getMode, getSubsections, getMinSubectionWidth } from './Components/EdgeTextExtraction.mjs';
 
 import testvideomp4 from "./TestVideo.mp4";
 import testvideo2mp4 from "./TestVideo2.0.mp4"
@@ -15,7 +15,7 @@ import tableSample from "./TableSample.jpg"
 import eng_bw from "./eng_bw.png"
 import tableSampleCleaned from "./TableSampleCleaned.png";
 import msTableSample from "./MSWordTableSample.png";
-import image1 from "./Testing/TestingImages/Image1.png";
+import image1 from "./Testing/TestingImages/image15.PNG";
 
 
 
@@ -94,12 +94,17 @@ export default function VideoApp() {
 
     return canvas;
   }
-
+  /**
+     * Takes a CTX 2d image and divides the imagine into a 2d grid of subsections depending on the color of the pixel and the relative proximity of them
+     * Text pixels are read and placed into subsections which are then returned
+     *
+     * @return the rectangles formed from the subsections and the num rows and num columns
+  */
   function formRectanglesFromImage() {
-    const PIXEL_DIFF_THRESHOLD = 100;
+    const PIXEL_DIFF_THRESHOLD = 100; //Difference between two pixel colors to where the Edge count regards them as different colors
     const CANVAS_WIDTH = 1920;
     const CANVAS_HEIGHT = 1080;
-    const SUBSECTION_TOLERANCE = 40;
+    const SUBSECTION_TOLERANCE = 20; // Number of pixels of different colors required sequentially to trigger switch in subsection count from "text" to "space" and vice versa
 
     const video = extractionFocus
     const canvas  = canvasRef.current;
@@ -109,7 +114,7 @@ export default function VideoApp() {
     //turnImageBinary(ctx, avgPixelBrightness);
     //console.log(avgPixelBrightness);
 
-    const ctxArray = convertCTXToColorArray(ctx, CANVAS_WIDTH, CANVAS_HEIGHT);
+    const ctxArray = convertCTXToColorArray(ctx, CANVAS_WIDTH, CANVAS_HEIGHT); // 2D javascript array with color info for each pixel with fast access times
     console.log(ctxArray)
 
     const colEdges = getColumnEdgeCount(ctxArray, CANVAS_WIDTH, CANVAS_HEIGHT, PIXEL_DIFF_THRESHOLD);
@@ -122,23 +127,23 @@ export default function VideoApp() {
     console.log(mode);
 
     const [rowSubsections, numRows] = getSubsections(rowEdges, mode, SUBSECTION_TOLERANCE);
-    const [colSubsections, numColumns] = getSubsections(colEdges, mode, SUBSECTION_TOLERANCE);
+    const [colSubsections, numColumns] = getSubsections(colEdges, mode, SUBSECTION_TOLERANCE); 
     console.log(colSubsections);
     console.log(rowSubsections);
 
-    let rowBuffer = 40;
-    if (rowSubsections.length > 2) {
-      rowBuffer = (rowSubsections[2].End - rowSubsections[2].Start) / 2;
+    let rowBuffer = 60;
+    if (rowSubsections.length >= 2) {
+      rowBuffer = getMinSubectionWidth(rowSubsections) / 2;
     }
 
-    let colBuffer = 40;
-    if (colSubsections.length > 2) {
-      colBuffer = (colSubsections[2].End - colSubsections[2].Start) / 2; 
+    let colBuffer = 60;
+    if (colSubsections.length >= 2) {
+      colBuffer = getMinSubectionWidth(colSubsections) / 2;
     }
     
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    //ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Draws the boxes around the 
+    // Draws the boxes around the subsections
     for (let i = 0; i < rowSubsections.length ; i++) {
       const subsection = rowSubsections[i];
       if (subsection.IsText === true) {
@@ -156,8 +161,9 @@ export default function VideoApp() {
         ctx.strokeRect(subsection.Start, 0, (subsection.End - subsection.Start), 1080);
       }
     }
-    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    //ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     
+    // Draw more boxes
     ctx.strokeStyle = 'green';
     const rectangles = [];
     for (let i = 0; i < rowSubsections.length; i++) {
@@ -174,20 +180,20 @@ export default function VideoApp() {
                               height: (rowSubsection.End - rowSubsection.Start) + rowBuffer * 2,
                               }
             
-            //ctx.strokeRect(rectangle.left, rectangle.top, rectangle.width, rectangle.height);
+            ctx.strokeRect(rectangle.left, rectangle.top, rectangle.width, rectangle.height);
             rectangles.push(rectangle);
           }
         }
       }
     }
-
+    //ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     return [rectangles, numRows, numColumns];
   }
 
-  async function extractText(rectangles, psmMode, language) {
+  async function extractText(rectangles, psmMode, language, isNumericalExtraction) {
     const extractionLanguage = language || "eng";
     console.log(extractionLanguage)
-    return await helperExtractText(canvasRef.current, rectangles, psmMode, extractionLanguage, setExtractionLog);
+    return await helperExtractText(canvasRef.current, rectangles, psmMode, extractionLanguage, setExtractionLog, isNumericalExtraction);
   }
 
   return (
@@ -217,6 +223,7 @@ export default function VideoApp() {
 
       <img id = "image" src = {image1} style={{"position":"absolute", "left": "80px","top": "900px",
                                                     "width": "1920px", "height": "1080px"}} />
+
       
     </div>
   );
