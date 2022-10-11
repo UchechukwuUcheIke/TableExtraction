@@ -38,6 +38,7 @@ export function GlassPane() {
   }
   
 export function Resizeable(props) {
+  const TOGGLE_CORNER_KEY = "KeyR";
   const minXPosition = props.minXPosition || 0;
   const minYPosition = props.minYPosition || 0;
   const maxXPosition = props.maxXPosition;
@@ -47,6 +48,8 @@ export function Resizeable(props) {
     const refTop = useRef(null);
     const refRight = useRef(null);
     const refBottom = useRef(null);
+    const frameStyle = props.frameStyle;
+    const setFrameStyle = props.setFrameStyle;
   
     useEffect(() => {
       const resizeableEle = props.theRef.current;
@@ -58,8 +61,8 @@ export function Resizeable(props) {
       
       // Right resize
       const onMouseMoveRightResize = (event) => {
-        const styles = window.getComputedStyle(resizeableEle);
-        let right = parseInt(styles.right, 10);
+        //const styles = window.getComputedStyle(resizeableEle);
+        let right = parseInt(frameStyle.right, 10);
         console.log(right);
         const dx = event.clientX - x;
 
@@ -70,7 +73,9 @@ export function Resizeable(props) {
         x = event.clientX;
 
         width = width + dx;
-        resizeableEle.style.width = `${width}px`;
+        //resizeableEle.style.width = `${width}px`;
+        setFrameStyle({"left": frameStyle.left,"top": frameStyle.top, "width": `${width}px`, "height": frameStyle.height, "right": frameStyle.right, "bottom": frameStyle.bottom});
+        
       };
   
       const onMouseUpRightResize = (event) => {
@@ -79,8 +84,10 @@ export function Resizeable(props) {
   
       const onMouseDownRightResize = (event) => {
         x = event.clientX;
-        resizeableEle.style.left = styles.left;
-        resizeableEle.style.right = null;
+        //resizeableEle.style.left = styles.left;
+        //resizeableEle.style.right = null;
+
+        setFrameStyle({"left": frameStyle.left,"top": frameStyle.top, "width": frameStyle.width, "height": frameStyle.height, "right": null, "bottom": frameStyle.bottom});
         document.addEventListener("mousemove", onMouseMoveRightResize);
         document.addEventListener("mouseup", onMouseUpRightResize);
       };
@@ -99,7 +106,8 @@ export function Resizeable(props) {
 
         height = height - dy;
         y = event.clientY;
-        resizeableEle.style.height = `${height}px`;
+        //resizeableEle.style.height = `${height}px`;
+        setFrameStyle({"left": frameStyle.left,"top": frameStyle.top, "width": frameStyle.width, "height": `${height}px`, "right": frameStyle.right, "bottom": frameStyle.bottom});
       };
   
       const onMouseUpTopResize = (event) => {
@@ -109,8 +117,10 @@ export function Resizeable(props) {
       const onMouseDownTopResize = (event) => {
         y = event.clientY;
         const styles = window.getComputedStyle(resizeableEle);
-        resizeableEle.style.bottom = styles.bottom;
-        resizeableEle.style.top = null;
+        //resizeableEle.style.bottom = styles.bottom;
+        //resizeableEle.style.top = null;
+
+        setFrameStyle({"left": frameStyle.left,"top": null, "width": frameStyle.width, "height": frameStyle.height, "right": frameStyle.right, "bottom": frameStyle.bottom});
         document.addEventListener("mousemove", onMouseMoveTopResize);
         document.addEventListener("mouseup", onMouseUpTopResize);
       };
@@ -128,7 +138,8 @@ export function Resizeable(props) {
         
         height = height + dy;
         y = event.clientY;
-        resizeableEle.style.height = `${height}px`;
+        //resizeableEle.style.height = `${height}px`;
+        setFrameStyle({"left": frameStyle.left,"top": frameStyle.top, "width": frameStyle.width, "height": `${height}px`, "right": frameStyle.right, "bottom": frameStyle.bottom});
       };
   
       const onMouseUpBottomResize = (event) => {
@@ -138,8 +149,10 @@ export function Resizeable(props) {
       const onMouseDownBottomResize = (event) => {
         y = event.clientY;
         const styles = window.getComputedStyle(resizeableEle);
-        resizeableEle.style.top = styles.top;
-        resizeableEle.style.bottom = null;
+        //resizeableEle.style.top = styles.top;
+        //resizeableEle.style.bottom = null;
+
+        setFrameStyle({"left": frameStyle.left,"top": frameStyle.top, "width": frameStyle.width, "height": frameStyle.height, "right": frameStyle.right, "bottom": null});
         document.addEventListener("mousemove", onMouseMoveBottomResize);
         document.addEventListener("mouseup", onMouseUpBottomResize);
       };
@@ -158,7 +171,9 @@ export function Resizeable(props) {
         x = event.clientX;
 
         width = width - dx;
-        resizeableEle.style.width = `${width}px`;
+        //resizeableEle.style.width = `${width}px`;
+
+        setFrameStyle({"left": frameStyle.left,"top": frameStyle.top, "width": `${width}px`, "height": frameStyle.height, "right": frameStyle.right, "bottom": frameStyle.bottom});
       };
   
       const onMouseUpLeftResize = (event) => {
@@ -167,13 +182,25 @@ export function Resizeable(props) {
   
       const onMouseDownLeftResize = (event) => {
         x = event.clientX;
-        resizeableEle.style.right = styles.right;
-        resizeableEle.style.left = null;
+        //resizeableEle.style.right = styles.right;
+        //resizeableEle.style.left = null;
+
+        setFrameStyle({"left": null,"top": frameStyle.top, "width": frameStyle.width, "height": frameStyle.height, "right": frameStyle.right, "bottom": frameStyle.bottom});
         document.addEventListener("mousemove", onMouseMoveLeftResize);
         document.addEventListener("mouseup", onMouseUpLeftResize);
       };
+
+      function onCornerToggle(event) {
+        console.log(event.code);
+        if (event.repeat) {return}
+        
+        if (event.code === TOGGLE_CORNER_KEY) {
+          console.log("Toggle Corner");
+        }
+      };
   
       // Add mouse down event listener
+      console.log("Here");
       const resizerRight = refRight.current;
       resizerRight.addEventListener("mousedown", onMouseDownRightResize);
       const resizerTop = refTop.current;
@@ -182,6 +209,9 @@ export function Resizeable(props) {
       resizerBottom.addEventListener("mousedown", onMouseDownBottomResize);
       const resizerLeft = refLeft.current;
       resizerLeft.addEventListener("mousedown", onMouseDownLeftResize);
+
+
+
   
       return () => {
         resizerRight.removeEventListener("mousedown", onMouseDownRightResize);
@@ -191,9 +221,9 @@ export function Resizeable(props) {
       };
     }, []);
 
-    console.log(props.resizeableStyle)
+    console.log(frameStyle)
     return (
-        <div ref={props.theRef} style={props.resizeableStyle} className="resizeable" >
+        <div ref={props.theRef} style={frameStyle} className="resizeable" >
           <div ref={refLeft} className="resizer resizer-l"></div>
           <div ref={refTop} className="resizer resizer-t"></div>
           <div ref={refRight} className="resizer resizer-r"></div>

@@ -1,0 +1,27 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`matches snapshot 1`] = `
+<div
+  className="context-menu"
+  data-testid="ContextMenu"
+  id="contextMenu"
+  style={
+    Object {
+      "left": undefined,
+      "top": undefined,
+    }
+  }
+>
+  <ul>
+    <li>
+       
+      <button
+        onClick={[Function]}
+      >
+        Open Text Extraction
+      </button>
+       
+    </li>
+  </ul>
+</div>
+`;

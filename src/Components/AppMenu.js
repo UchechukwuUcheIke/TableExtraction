@@ -3,215 +3,264 @@ import { Resizeable, GlassPane } from './Resizeable';
 import { DropDownList } from './DropDownList';
 import { Frame } from "./Frame.js"
 import './AppMenu.css';
-import { Table } from './EdgeTextExtraction.mjs';
+import { machine, convertToStandardNotation, Table } from '../HelperClasses/helper.js';
+import { helperExtractText, getAveragePixelBrightness, turnImageBinary, convertCTXToColorArray, getColumnEdgeCount, getRowEdgeCount, getMode, getSubsections, getMinSubectionWidth } from './EdgeTextExtraction.js';
 const { PSM } = require("tesseract.js");
 
-export const machine = {
-    state: 'START',
-    transitions: {
-        START: {
-            extractTable() {
-                this.state = 'SELECT_TABLE_EXTRACTION_STYLE'
-            },
-            saveFrame() {
-                this.state = 'SAVING_FRAME_IMAGE'
-            },
-            extractText() {
-                this.state = 'SELECT_TEXT_EXTRACTION_STYLE'
-            },
-            reset() {
-                this.state = "START";
-            }
-        },
-        SELECT_TABLE_EXTRACTION_STYLE: {
-            extractAsNormal() {
-                this.state = 'EXTRACTING_TABLE_AS_NORMAL';
-            },
-            extractAsNumerical() {
-                this.state = 'EXTRACTING_TABLE_AS_NUMERICAL';
-            },
-            cancel() {
-                this.state = 'START'
-            },
-            reset() {
-                this.state = "START";
-            }
-        },
-        EXTRACTING_TABLE_AS_NORMAL: {
-            finishExtractingTable() {
-                this.state = 'SELECT_TABLE_FORMAT';
-            },
-            cancel() {
-                this.state = 'START'
-            },
-            reset() {
-                this.state = "START";
-            }
-        },
-        EXTRACTING_TABLE_AS_NUMERICAL: {
-            finishExtractingTable() {
-                this.state = 'SELECT_TABLE_FORMAT';
-            },
-            cancel() {
-                this.state = 'START'
-            },
-            reset() {
-                this.state = "START";
-            }
-        },
-        SELECT_TABLE_FORMAT: {
-            finishTableFormatting() {
-                this.state = 'FINISH_TABLE_FORMATTING';
-            },
-            cancel() {
-                this.state = 'START'
-            },
-            reset() {
-                this.state = "START";
-            }
-        },
-        SAVING_FRAME_IMAGE: {
-            reset() {
-                this.state = "START"
-            },
-            cancel() {
-                this.state = 'START'
-            },
-            reset() {
-                this.state = "START";
-            }
-        },
-        SELECT_TEXT_EXTRACTION_STYLE: {
-            extractAsNormal() {
-                this.state = 'EXTRACTING_TEXT_AS_NORMAL';
-            },
-            extractAsNumerical() {
-                this.state = 'EXTRACTING_TEXT_AS_NUMERICAL';
-            },
-            cancel() {
-                this.state = 'START'
-            },
-            reset() {
-                this.state = "START";
-            }
-        },
-        EXTRACTING_TEXT_AS_NORMAL: {
-            finishExtractingText() {
-                this.state = 'FINISH_TEXT_EXTRACTION';
-            },
-            cancel() {
-                this.state = 'START'
-            },
-            reset() {
-                this.state = "START";
-            }
-        },
-        EXTRACTING_TEXT_AS_NUMERICAL: {
-            finishExtractingText() {
-                this.state = 'FINISH_TEXT_EXTRACTION';
-            },
-            cancel() {
-                this.state = 'START'
-            },
-            reset() {
-                this.state = "START";
-            }
-        },
-        FINISH_TEXT_EXTRACTION: {
-            reset() {
-                this.state = "START";
-            }
-        },
-        FINISH_TABLE_FORMATTING: {
-            reset() {
-                this.state = "START";
-            },
-            finishTableFormatting() {
-                this.state = "FINISH_TABLE_FORMATTING"
-            }
-        },
 
-    },
-    dispatch(actionName) {
-        const action = this.transitions[this.state][actionName];
 
-        if (action) {
-            return action.call(this);
-        } else {
-            console.log('invalid action');
-            return null;
-        }
-    },
-};
 
-function convertToStandardNotation(textValues) {
-    const length = textValues.length;
-    const result = new Array(length);
 
-    for (let i = 0; i < textValues.length; i++) {
-        const text = textValues[i];
-        const textLength = text.length;
-        const exponentIdx = text.indexOf("e");
-        const coefficient = text.slice(0, exponentIdx);
-        const exponent = text.slice(exponentIdx + 1, textLength);
-        console.log(coefficient);
-        console.log(exponent);
-        if (exponent === "" || coefficient === "") { // Can't convert this, just return the old text value
-            result[i] = text;
-        } else {
-            const coefficentValue = parseFloat(coefficient, 10);
-            const exponentValue = parseFloat(exponent, 10);
-            const value = coefficentValue * (10 ** exponentValue);
-            console.log(value);
-            result[i] = value.toString();
-        }
-    }
 
-    return result;
-}
-
-function renderResizeable(resizeableRef, videoRef) {
-    const video = videoRef;
-    if (video === null) {
-        return null;
-    }
-
-    const styles = window.getComputedStyle(video);
-    
-
-    const videoWidth = parseInt(styles.width, 10);
-    const videoHeight = parseInt(styles.height, 10);
-    const videoTop = parseInt(styles.top, 10);
-    const videoLeft = parseInt(styles.left, 10);
-    const parentDimensions = {width: videoWidth, height: videoHeight, top: videoTop, left: videoLeft};
-    console.log(parentDimensions);
-    return (
-        <Frame frameRef = {resizeableRef} 
-        parentDimensions = {parentDimensions}/>
-    )
-}
-
+/**
+ * Component rendering the dotted frame around the media being focused on. 
+ * Sets the frame's dimensions to be equal to the dimensions of the media on the webpage
+ *
+ * 
+ * return (
+ *   <Frame />
+ * )
+ */
 export function Menu(props) {
     const processFSMRef = useRef(Object.create(machine));
-    const videoRef = props.videoRef;
-    const canvasRef = props.canvasRef;
-    const resizeableRef = props.resizeableRef;
-    const extractionLog = props.extractionLog;
+    const canvasRef = props.canvasRef; // Ref to the Canvas object where image extractions from media are stored
+    const extractionFocus = props.extractionFocus // The image or video being drawn on the canvas
+    const resizeableRef = props.resizeableRef; // Ref to the "Frame" around media
+    const extractionLog = props.extractionLog; // REACT state referencing the current state of the extraction process according to Tesseract
     const jsonCheckboxRef = useRef(null);
-    const [extractionLanguage, setExtractionLanguage] = useState("eng")
+    const [extractionLanguage, setExtractionLanguage] = useState("eng") // State for the extraction language of tesseract
+    const bottomRightCornerRef = props.bottomRightCornerRef;
+    const topLeftCornerRef = props.topLeftCornerRef;
+    
+    const frameStyle = props.frameStyle;
+    const setFrameStyle = props.setFrameStyle;
+
+        /**
+         * Component rendering the dotted frame around the media being focused on. 
+         * Sets the frame's dimensions to be equal to the dimensions of the media on the webpage
+         *
+         * 
+         * return (
+         *   <Frame />
+         * )
+         */
+    function renderResizeable() {
+            const video = extractionFocus;
+            if (video === undefined || video.current === null) {
+                return null;
+            }
+            const styles = window.getComputedStyle(video);
+            
+
+            const videoWidth = parseInt(styles.width, 10);
+            const videoHeight = parseInt(styles.height, 10);
+            const videoTop = parseInt(styles.top, 10);
+            const videoLeft = parseInt(styles.left, 10);
+            const parentDimensions = {width: videoWidth, height: videoHeight, top: videoTop, left: videoLeft};
+            console.log(parentDimensions);
+            return (
+                <Frame frameRef = {resizeableRef} bottomRightCornerRef = {bottomRightCornerRef} topLeftCornerRef = {topLeftCornerRef}
+                parentDimensions = {parentDimensions}/>
+            )
+    }
 
 
-    function onScreenshot() {
+    /**
+    * Draws the current frame of an image/video onto the canvas object of the App based on the dimensions of the Dotted frame around the media
+    * @return canvas
+    */
+    function drawCanvas() {
+        const resizeableElement = resizeableRef.current; // A Frame around which the image is drawn into the canvas
+        const canvas = canvasRef.current;
+    
+        let focusImageWidth;
+        let focusImageHeight;
+        if (extractionFocus.tagName === "VIDEO") { // Sets the focusImageWidth/Height to be the actual resolution of the element focused on
+          focusImageWidth = extractionFocus.videoWidth;
+          focusImageHeight = extractionFocus.videoHeight;
+        } else if (extractionFocus.tagName === "IMG") {
+          focusImageWidth = extractionFocus.naturalWidth;
+          focusImageHeight = extractionFocus.naturalHeight;      
+        } else {
+          focusImageWidth = extractionFocus.width;
+          focusImageHeight = extractionFocus.height;   
+        }
+        
+        // Collect CSS style information for scaling between actual resolution and apparent resolution
+        const resizeableElementStyle = getComputedStyle(resizeableElement)
+        const focusStyle = getComputedStyle(extractionFocus);
+        const resizeableTop = parseInt(resizeableElementStyle.top, 10);
+        const focusTop = parseInt(focusStyle.top, 10);
+        const resizeableLeft = parseInt(resizeableElementStyle.left, 10);
+        const focusLeft = parseInt(focusStyle.left, 10);
+        const resizeableWidth = parseInt(resizeableElementStyle.width, 10);
+        const resizeableHeight = parseInt(resizeableElementStyle.height, 10);
+        const focusWidth = parseInt(focusStyle.width, 10);
+        const focusHeight = parseInt(focusStyle.height, 10);
+    
+        // Scaling calculations between the apparent resolution of the extractionFocus to its actual resolution
+        const videoToVideoImageScalingWidth = focusImageWidth / focusWidth;
+        const videoToVideoImageScalingHeight = focusImageHeight / focusHeight;
+    
+        const destinationTop = (resizeableTop - focusTop) * videoToVideoImageScalingHeight;
+        const destinationLeft = (resizeableLeft - focusLeft) * videoToVideoImageScalingWidth;
+        const destinationWidth = resizeableWidth * videoToVideoImageScalingWidth;
+        const destinationHeight = resizeableHeight * videoToVideoImageScalingHeight;
+    
+        // Adjust canvas actual resolution and apparent size to match dimensions needed
+        canvas.width = destinationWidth;
+        canvas.height = destinationHeight;
+        canvas.style.width = `${destinationWidth}px`; // 'px' added to abide by css style rules
+        canvas.style.height = `${destinationHeight}px`;
+    
+        // Drawing scaled image on canvas
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(extractionFocus, destinationLeft, destinationTop); 
+
+        //ctx.strokeStyle = 'black';
+        //ctx.lineWidth = 20;
+        //ctx.strokeRect(0, 0, destinationWidth, destinationHeight);
+
+        return canvas;
+    }
+
+    function AddBorderAndPaddingToCanvasImage() {
+        const canvas = canvasRef.current;
+        const ctx = canvas.getContext("2d");
+
+        const originalCanvasWidth = canvas.width;
+        const originalCanvasHeight = canvas.height;
+
+        const imageData = ctx.getImageData(0, 0, originalCanvasWidth, originalCanvasHeight);
+
+        const TOP_PADDING = 10;
+        const LEFT_PADDING = 10;
+
+        const newCanvasWidth = originalCanvasWidth + LEFT_PADDING * 2
+        const newCanvasHeight = originalCanvasHeight + TOP_PADDING * 2
+        canvas.width = newCanvasWidth
+        canvas.height = newCanvasHeight
+
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, newCanvasWidth, newCanvasHeight)
+        ctx.putImageData(imageData, LEFT_PADDING, TOP_PADDING)
+
+        ctx.strokeStyle = 'white';
+        ctx.lineWidth = 10;
+        ctx.strokeRect(0, 0, newCanvasWidth, newCanvasHeight);
+    }
+
+    async function extractTextFromCanvas(rectangles, psmMode, language, isNumericalExtraction) {
+        const extractionLanguage = language || "eng";
+        console.log(extractionLanguage)
+        return await helperExtractText(canvasRef.current, rectangles, psmMode, extractionLanguage, props.setExtractionLog, isNumericalExtraction);
+    }
+
+    /**
+     * Takes a CTX 2d image and divides the imagine into a 2d grid of subsections depending on the color of the pixel and the relative proximity of them
+     * Text pixels are read and placed into subsections which are then returned
+     *
+     * @return the rectangles formed from the subsections and the num rows and num columns
+    */
+    function formRectanglesFromImage() {
+        const PIXEL_DIFF_THRESHOLD = 100; //Difference between two pixel colors to where the Edge count regards them as different colors
+        const CANVAS_WIDTH = 1920;
+        const CANVAS_HEIGHT = 1080;
+        const SUBSECTION_TOLERANCE = 20; // Number of pixels of different colors required sequentially to trigger switch in subsection count from "text" to "space" and vice versa
+
+        const video = extractionFocus
         const canvas  = canvasRef.current;
+        const ctx = canvas.getContext("2d");
 
-        props.drawCanvas(canvas);
+        //const avgPixelBrightness = getAveragePixelBrightness(ctx);
+        //turnImageBinary(ctx, avgPixelBrightness);
+        //console.log(avgPixelBrightness);
+
+        const ctxArray = convertCTXToColorArray(ctx, CANVAS_WIDTH, CANVAS_HEIGHT); // 2D javascript array with color info for each pixel with fast access times
+        console.log(ctxArray)
+
+        const colEdges = getColumnEdgeCount(ctxArray, CANVAS_WIDTH, CANVAS_HEIGHT, PIXEL_DIFF_THRESHOLD);
+        console.log(colEdges);
+
+        const rowEdges = getRowEdgeCount(ctxArray, CANVAS_WIDTH, CANVAS_HEIGHT, PIXEL_DIFF_THRESHOLD);
+        console.log(rowEdges);
+
+        const mode = getMode(rowEdges);
+        console.log(mode);
+
+        const [rowSubsections, numRows] = getSubsections(rowEdges, mode, SUBSECTION_TOLERANCE);
+        const [colSubsections, numColumns] = getSubsections(colEdges, mode, SUBSECTION_TOLERANCE); 
+        console.log(colSubsections);
+        console.log(rowSubsections);
+
+        let rowBuffer = 60;
+        if (rowSubsections.length >= 2) {
+        rowBuffer = getMinSubectionWidth(rowSubsections) / 2;
+        }
+
+        let colBuffer = 60;
+        if (colSubsections.length >= 2) {
+        colBuffer = getMinSubectionWidth(colSubsections) / 2;
+        }
+        
+        //ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+        // Draws the boxes around the subsections
+        for (let i = 0; i < rowSubsections.length ; i++) {
+        const subsection = rowSubsections[i];
+        if (subsection.IsText === true) {
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(0, subsection.Start, 1920, (subsection.End - subsection.Start));
+        }
+        }
+
+        for (let i = 0; i < colSubsections.length ; i++) {
+        const subsection = colSubsections[i];
+        if (subsection.IsText === true) {
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(subsection.Start, 0, (subsection.End - subsection.Start), 1080);
+        }
+        }
+        //ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // Draw more boxes
+        ctx.strokeStyle = 'green';
+        const rectangles = [];
+        for (let i = 0; i < rowSubsections.length; i++) {
+        const rowSubsection = rowSubsections[i];
+        if (rowSubsection.IsText === true) {
+            for (let j = 0; j < colSubsections.length; j++) {
+            const colSubsection = colSubsections[j];
+
+            if (colSubsection.IsText === true) {
+                const rectangle = {
+                                left: colSubsection.Start - colBuffer,
+                                top: rowSubsection.Start - rowBuffer,
+                                width: (colSubsection.End - colSubsection.Start) + colBuffer * 2,
+                                height: (rowSubsection.End - rowSubsection.Start) + rowBuffer * 2,
+                                }
+                
+                ctx.strokeRect(rectangle.left, rectangle.top, rectangle.width, rectangle.height);
+                rectangles.push(rectangle);
+            }
+            }
+        }
+        }
+        //ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        return [rectangles, numRows, numColumns];
     }
 
     async function extractText(numericalValues) {
-        const video = videoRef;
+        const video = extractionFocus;
         const canvas = canvasRef.current;
         const resizeableElement = resizeableRef.current;
-        props.drawCanvas(canvas);
+        drawCanvas();
+        AddBorderAndPaddingToCanvasImage();
+        //const ctx = canvas.getContext("2d");
+        //const avgPixelBrightness = getAveragePixelBrightness(ctx);
+        //turnImageBinary(ctx, avgPixelBrightness);
         const canvasStyle = getComputedStyle(canvas);
         
         const canvasWidth = parseInt(canvasStyle.width, 10);
@@ -254,9 +303,15 @@ export function Menu(props) {
             
         }
         */
-        let PSM_MODE = PSM.SPARSE_TEXT;
+        let PSM_MODE
+        
+        if (showNumericalValues) {
+            PSM_MODE = PSM.SINGLE_LINE;
+        }else {
+            PSM_MODE = PSM.SINGLE_COLUMN;
+        }
         console.log(`PSM Mode: ${PSM_MODE}`);
-        let textValues = await props.extractText([rectangle], PSM_MODE, extractionLanguage, showNumericalValues);
+        let textValues = await extractTextFromCanvas([rectangle], PSM_MODE, extractionLanguage, showNumericalValues);
 
         if (showNumericalValues) {textValues = convertToStandardNotation(textValues);}
         
@@ -270,9 +325,9 @@ export function Menu(props) {
         const showNumericalValues = numericalValues || false;
         const canvas = canvasRef.current;
         
-        props.drawCanvas(canvas);
-        const [rectangles, numRows, numCols] = props.formRectanglesFromImage();
-        let textValues = await props.extractText(rectangles, PSM.SINGLE_COLUMN, extractionLanguage, showNumericalValues);
+        drawCanvas();
+        const [rectangles, numRows, numCols] = formRectanglesFromImage();
+        let textValues = await extractTextFromCanvas(rectangles, PSM.SINGLE_COLUMN, extractionLanguage, showNumericalValues);
 
         if (showNumericalValues) {
 
@@ -288,7 +343,7 @@ export function Menu(props) {
     async function onExtractAsText() {
         const processFSM = processFSMRef.current;
 
-        if (processFSM.state !== "START" || videoRef == null) {
+        if (processFSM.state !== "START" || extractionFocus == null) {
             return;
         }
 
@@ -300,7 +355,7 @@ export function Menu(props) {
     async function onExtractAsTable() {
         const processFSM = processFSMRef.current;
 
-        if (processFSM.state !== "START" || videoRef == null) {
+        if (processFSM.state !== "START" || extractionFocus == null) {
             return;
         }
 
@@ -419,7 +474,7 @@ export function Menu(props) {
         }
 
         const canvas = canvasRef.current;
-        props.drawCanvas(canvas);
+        drawCanvas();
 
         const canvasUrl = canvas.toDataURL("image/png", 0.5);
         const createEl = document.createElement('a');
@@ -436,7 +491,7 @@ export function Menu(props) {
         console.log(processFSM);
         processFSM.dispatch("reset");
 
-        props.setAppMenuDisplay("none");
+        props.setShowAppMenu(false);
     }
 
     function onCopyTextToClipboard() {
@@ -474,16 +529,19 @@ export function Menu(props) {
 
 
     function changeFocus(e) {
-        props.setExtractionFocus(e.target);
-        console.log("click");
-        document.ondblclick = null;
-        const el = document.querySelector('video');
-        el.controls = true;
+        const element = e.target;
+        if (element.tagName === "VIDEO" || element.tagName === "IMG") {
+            props.setExtractionFocus(e.target);
+            console.log("click");
+            document.ondblclick = null;
+            const el = document.querySelector('video');
+            el.controls = true; // Renables menu for video players
+        }
     }
     function onChangeExtractionTarget(e) {
         document.ondblclick = changeFocus
         const el = document.querySelector('video');
-        el.controls = false;
+        el.controls = false; // Disables menu for video players so they can be clicked on to switch extraction target
     }
 
     return (
@@ -586,12 +644,8 @@ export function Menu(props) {
                 
             </div>
 
-            {renderResizeable(resizeableRef, videoRef)};
+            {renderResizeable()};
 
         </Fragment>
     )
 }
-/** 
-<Resizeable theRef = {resizeableRef} width={425} height={canvasHeight} 
-minXPosition={0} maxXPosition={425} minYPosition={0} maxYPosition={450}/>
-*/

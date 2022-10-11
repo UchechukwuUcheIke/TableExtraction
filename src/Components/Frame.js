@@ -1,11 +1,10 @@
-//<Frame parentDimensions = {{width: 500, height: 500, top: 0, left: 0}}/>
 import React, { useEffect, useRef } from 'react';
 import './Frame.css';
 export function Frame(props) {
     const frameRef = props.frameRef;
     const bottomLeftCornerRef = useRef(null);
-    const bottomRightCornerRef = useRef(null);
-    const topLeftCornerRef = useRef(null);
+    const bottomRightCornerRef = props.bottomRightCornerRef;
+    const topLeftCornerRef = props.topLeftCornerRef;
     const topRightCornerRef = useRef(null);
     const centerButtonRef = useRef(null);
     const parentDimensions = props.parentDimensions;
@@ -196,12 +195,9 @@ export function Frame(props) {
       <div ref={frameRef} className = "frame" style={{"top": `${parentTop}px`, "left": `${parentLeft}px`,
                                                         "width": `${parentWidth}px`, "height": `${parentHeight}px`}}>
   
-        <button ref={bottomLeftCornerRef} style={{"left": "0px", "bottom": "0px"}}> </button>
-        <button ref={bottomRightCornerRef} style={{"right": "0px", "bottom": "0px"}}> </button>
-        <button ref={topLeftCornerRef} id="topLeft"> </button>
-        <button ref={topRightCornerRef} style={{"right": "0px", "top": "0px"}}> </button>
+        <button ref={bottomRightCornerRef} id="bottomRight" style={{"right": "0px", "bottom": "0px", "backgroundColor": "white"}}> </button>
+        <button ref={topLeftCornerRef} id="topLeft" style={{"left": "0px", "top": "0px", "backgroundColor": "white"}}> </button>
         <button ref={centerButtonRef} id="center"> </button>
       </div>
     );
   }
-
