@@ -2,11 +2,11 @@ import React, { useEffect, useRef } from 'react';
 import './Frame.css';
 export function Frame(props) {
     const frameRef = props.frameRef;
-    const bottomLeftCornerRef = useRef(null);
+
     const bottomRightCornerRef = props.bottomRightCornerRef;
     const topLeftCornerRef = props.topLeftCornerRef;
-    const topRightCornerRef = useRef(null);
-    const centerButtonRef = useRef(null);
+
+    const centerButtonRef = props.centerFrameRef;
     const parentDimensions = props.parentDimensions;
     const parentTop = parentDimensions.top;
     const parentLeft = parentDimensions.left;

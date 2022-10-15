@@ -4,13 +4,6 @@
 
 
 export function AppFSMConstructor(refs) {
-  const fsm = Object.create(AppFSM);
-  fsm.transitions.MENU.ref = refs.MENU;
-  fsm.transitions.FRAME.ref = refs.FRAME;
-  fsm.transitions.LEFT_FRAME_CORNER.ref = refs.LEFT_FRAME_CORNER;
-  fsm.transitions.CENTER_FRAME.ref = refs.CENTER_FRAME;
-  fsm.transitions.RIGHT_FRAME_CORNER.ref = refs.RIGHT_FRAME_CORNER;
-
   /**
   * FSM that represents the states Extraction App run through based on keyboard input
   *
@@ -25,84 +18,104 @@ export function AppFSMConstructor(refs) {
   * @state  SELECT_TABLE_FORMAT
   * @state  FINISH_TEXT_EXTRACTION
   */
-  const AppFSM = {
-    state: 'START',
+   const AppFSM = {
+    state: 'APP_CLOSED',
+    ref: null,
     transitions: {
         APP_CLOSED: {
+            ref: null,
             enter() {
               this.state = "MENU";
+              this.ref = this.transitions.MENU.ref;
             },
-            ref: null,
         },
         MENU: {
           enter() {
             this.state = "OPTION_SELECT";
+            this.ref = this.transitions.OPTION_SELECT.ref;
           },
           esc() {
             this.state = "APP_CLOSED";
+            this.ref = this.transitions.APP_CLOSED.ref;
           },
           right() {
-            this.state = "FRAME"
+            this.state = "FRAME";
+            this.ref = this.transitions.FRAME.ref;
           },
           left() {
-            this.state = "FRAME"
+            this.state = "FRAME";
+            this.ref = this.transitions.FRAME.ref;
           },
           ref: null,
         },
         FRAME: {
           enter() {
             this.state = "LEFT_FRAME_CORNER";
+            this.ref = this.transitions.LEFT_FRAME_CORNER.ref;
           },
           esc() {
             this.state = "APP_CLOSED";
+            this.ref = this.transitions.APP_CLOSED.ref;
           },
           right() {
-            this.state = "MENU"
+            this.state = "MENU";
+            this.ref = this.transitions.MENU.ref;
           },
           left() {
             this.state = "MENU"
+            this.ref = this.transitions.MENU.ref;
           },
           ref: null,
         },
         OPTION_SELECT: {
           esc() {
             this.state = "MENU";
+            this.ref = this.transitions.MENU.ref;
           },
           ref: null,
         },
         LEFT_FRAME_CORNER: {
           esc() {
             this.state = "FRAME";
+            this.ref = this.transitions.FRAME.ref;
           },
           right() {
-            this.state = "CENTER_FRAME"
+            this.state = "CENTER_FRAME";
+            this.ref = this.transitions.CENTER_FRAME.ref;
           },
           left() {
-            this.state = "RIGHT_FRAME_CORNER"
+            this.state = "RIGHT_FRAME_CORNER";
+            this.ref = this.transitions.RIGHT_FRAME_CORNER.ref;
           },
           ref: null,
         },
         CENTER_FRAME: {
           esc() {
             this.state = "FRAME";
+            this.ref = this.transitions.FRAME.ref;
           },
           right() {
             this.state = "RIGHT_FRAME_CORNER"
+            this.ref = this.transitions.RIGHT_FRAME_CORNER.ref;
           },
           left() {
             this.state = "LEFT_FRAME_CORNER"
+            this.ref = this.transitions.LEFT_FRAME_CORNER.ref;
           },
           ref: null,
         },
         RIGHT_FRAME_CORNER: {
           esc() {
             this.state = "FRAME";
+            this.ref = this.transitions.FRAME.ref;
           },
           right() {
-            this.state = "LEFT_FRAME_CORNER"
+            this.state = "LEFT_FRAME_CORNER";
+            this.ref = this.transitions.LEFT_FRAME_CORNER.ref;
           },
           left() {
             this.state = "CENTER_FRAME"
+            this.ref = this.transitions.CENTER_FRAME.ref;
           },
           ref: null,
         },
@@ -118,7 +131,20 @@ export function AppFSMConstructor(refs) {
             return null;
         }
     },
+
+    getRef() {
+      return this.ref;
+    },
   };
+
+  const fsm = Object.create(AppFSM);
+  fsm.transitions.MENU.ref = refs.MENU;
+  fsm.transitions.FRAME.ref = refs.FRAME;
+  fsm.transitions.LEFT_FRAME_CORNER.ref = refs.LEFT_FRAME_CORNER;
+  fsm.transitions.CENTER_FRAME.ref = refs.CENTER_FRAME;
+  fsm.transitions.RIGHT_FRAME_CORNER.ref = refs.RIGHT_FRAME_CORNER;
+
+  return fsm;
 }
 
 

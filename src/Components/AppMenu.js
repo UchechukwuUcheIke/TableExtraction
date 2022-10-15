@@ -31,6 +31,7 @@ export function Menu(props) {
     const [extractionLanguage, setExtractionLanguage] = useState("eng") // State for the extraction language of tesseract
     const bottomRightCornerRef = props.bottomRightCornerRef;
     const topLeftCornerRef = props.topLeftCornerRef;
+    const centerFrameRef = props.centerFrameRef;
     
     const frameStyle = props.frameStyle;
     const setFrameStyle = props.setFrameStyle;
@@ -59,7 +60,7 @@ export function Menu(props) {
             const parentDimensions = {width: videoWidth, height: videoHeight, top: videoTop, left: videoLeft};
             console.log(parentDimensions);
             return (
-                <Frame frameRef = {resizeableRef} bottomRightCornerRef = {bottomRightCornerRef} topLeftCornerRef = {topLeftCornerRef}
+                <Frame frameRef = {resizeableRef} bottomRightCornerRef = {bottomRightCornerRef} topLeftCornerRef = {topLeftCornerRef} centerFrameRef = {centerFrameRef}
                 parentDimensions = {parentDimensions}/>
             )
     }
@@ -546,7 +547,7 @@ export function Menu(props) {
 
     return (
         <Fragment>
-            <div id = "Menu">
+            <div id = "Menu" ref={props.optionSelectRef}>
                 <div id = "Heading">
                     <h1> Option Select </h1>
                     

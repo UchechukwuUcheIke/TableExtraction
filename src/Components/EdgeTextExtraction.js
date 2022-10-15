@@ -12,9 +12,10 @@ const path = require('path');
   // image is a default parameter used so we can do testing
   let worker = null;
   const multipleExtractions = rectangles.length > 1;
-  const languagePath = "file:///c:/Users/Uche/my-react-app/node_modules/tesseract.js/dist";  // location of data files
+  const languagePath = "https://raw.githubusercontent.com/UchechukwuUcheIke/TableExtraction/main/src/Languages";  // location of data files
   console.log(languagePath)
   if (setExtractionLog)  {
+    console.log("Up HERE!")
     worker = createWorker({
         logger: (m) => {
           setExtractionLog({
@@ -23,9 +24,13 @@ const path = require('path');
           });
         },
         langPath: languagePath,
+        gzip: false,
       });
   } else {
-    worker = createWorker();
+    console.log("HERE IN HERE")
+    worker = createWorker({
+      langPath: languagePath,
+    });
   }
 
   const canvas = image
@@ -37,8 +42,8 @@ const path = require('path');
   await worker.load();
   //await worker.loadLanguage(extractionLanguage);
   //await worker.initialize(extractionLanguage);
-  await worker.loadLanguage("eng2");
-  await worker.initialize("eng2");
+  await worker.loadLanguage("engstack");
+  await worker.initialize("engstack");
 
   if (isNumericalExtraction && isNumericalExtraction === true) {
     await worker.setParameters({

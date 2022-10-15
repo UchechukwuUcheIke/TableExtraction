@@ -35,7 +35,7 @@ export function VideoApp() {
   const extractionCornerRef = useRef(topLeftCornerRef);
 
   const refsTable = {MENU: menuRef, FRAME: resizeableRef, LEFT_FRAME_CORNER: topLeftCornerRef, CENTER_FRAME: centerFrameRef, RIGHT_FRAME_CORNER: bottomRightCornerRef};
-  const AppFSM = useRef(AppFSMConstructor(refsTable));
+  const appFSMRef = useRef(AppFSMConstructor(refsTable));
 
   let appMenuVisible = false // Keeps track of appMenu's visibility only for the useEffect callback
 
@@ -67,6 +67,8 @@ export function VideoApp() {
     focusIndex.current = (focusIndex.current + 1) % mod;
   }
 
+  
+
 
   // Function is executed when user right clicks on page and pops up
   function toggleContextMenu(e) {
@@ -85,27 +87,17 @@ export function VideoApp() {
   }
 
   useEffect(()=>{
-    function swapExtractionCorner(event) {
-      if (event.repeat) {return}
-  
-      if (event.code === SWAP_CORNER_KEY) {
-        if (extractionCornerRef.current === topLeftCornerRef) {
-          extractionCornerRef.current = bottomRightCornerRef;
-        } else if (extractionCornerRef.current === bottomRightCornerRef) {
-          extractionCornerRef.current = topLeftCornerRef;
-        }
-        console.log(extractionCornerRef.current);
-      }
 
-      bottomRightCornerRef.current.style.backgroundColor = "white";
-      topLeftCornerRef.current.style.backgroundColor = "white";
-      extractionCornerRef.current.current.style.backgroundColor = "red";
-    }
 
     function moveExtractionCorner(event) {
       console.log(extractionFocus);
       if (event.repeat) { return}
 
+      const appFSM = appFSMRef.current;
+      if (appFSM.state !== "LEFT_FRAME_CORNER" && appFSM.state !== "RIGHT_FRAME_CORNER") {
+        return
+      }
+      
       const frame = resizeableRef.current;
       const frameStyles = window.getComputedStyle(frame);
       const extractionFocusStyles = window.getComputedStyle(extractionFocus);
@@ -114,7 +106,7 @@ export function VideoApp() {
 
       if (event.code === "KeyA") {
         const width = parseInt(frameStyles.width, 10);
-        if (extractionCornerRef.current === topLeftCornerRef) {
+        if (appFSM.state == "LEFT_FRAME_CORNER") {
           const left = parseInt(frameStyles.left, 10);
           const minLeft = parseInt(extractionFocusStyles.left, 10);
           if ((left - MAX_PIXEL_INCREMENT) < minLeft) {
@@ -126,7 +118,7 @@ export function VideoApp() {
           frame.style.right = right;
           frame.style.width = `${width  + MAX_PIXEL_INCREMENT}px`;
 
-        } else if (extractionCornerRef.current === bottomRightCornerRef) {
+        } else if (appFSM.state == "RIGHT_FRAME_CORNER") {
           const left = frameStyles.left;
           
           frame.style.left = left;
@@ -136,14 +128,14 @@ export function VideoApp() {
         }
       } else if (event.code === "KeyD") {
         const width = parseInt(frameStyles.width, 10);
-        if (extractionCornerRef.current === topLeftCornerRef) {
+        if (appFSM.state == "LEFT_FRAME_CORNER") {
           const right = frameStyles.right;
           
           frame.style.left = null;
           frame.style.right = right;
           frame.style.width = `${width  - MAX_PIXEL_INCREMENT}px`;
 
-        } else if (extractionCornerRef.current === bottomRightCornerRef) {
+        } else if (appFSM.state == "RIGHT_FRAME_CORNER") {
           const right = parseInt(frameStyles.right, 10);
           const maxRight = parseInt(extractionFocusStyles.right, 10);
           if ((right + MAX_PIXEL_INCREMENT) < maxRight) {
@@ -158,14 +150,14 @@ export function VideoApp() {
         }
       } else if (event.code === "KeyS") {
         const height = parseInt(frameStyles.height, 10);
-        if (extractionCornerRef.current === topLeftCornerRef) {
+        if (appFSM.state == "LEFT_FRAME_CORNER") {
           const bottom = frameStyles.bottom;
           
           frame.style.top = null;
           frame.style.bottom = bottom;
           frame.style.height = `${height  - MAX_PIXEL_INCREMENT}px`;
 
-        } else if (extractionCornerRef.current === bottomRightCornerRef) {
+        } else if (appFSM.state == "RIGHT_FRAME_CORNER") {
           const bottom = parseInt(frameStyles.bottom, 10);
           const maxBottom = parseInt(extractionFocusStyles.bottom, 10);
           if ((bottom + MAX_PIXEL_INCREMENT) < maxBottom) {
@@ -180,7 +172,7 @@ export function VideoApp() {
         }
       } else if (event.code === "KeyW") {
         const height = parseInt(frameStyles.height, 10);
-        if (extractionCornerRef.current === topLeftCornerRef) {
+        if (appFSM.state == "LEFT_FRAME_CORNER") {
           const top = parseInt(frameStyles.top, 10);
           const maxTop = parseInt(extractionFocusStyles.top, 10);
           if ((top - MAX_PIXEL_INCREMENT) < maxTop) {
@@ -192,7 +184,7 @@ export function VideoApp() {
           frame.style.bottom = bottom;
           frame.style.height = `${height  + MAX_PIXEL_INCREMENT}px`;
 
-        } else if (extractionCornerRef.current === bottomRightCornerRef) {
+        } else if (appFSM.state == "RIGHT_FRAME_CORNER") {
           const top = frameStyles.top;
           
           frame.style.top = top;
@@ -204,12 +196,10 @@ export function VideoApp() {
     }
 
     console.log("Also HERE!");
-    document.addEventListener("keydown", swapExtractionCorner);
     document.addEventListener("keydown", moveExtractionCorner);
 
     return () => {
-      document.removeEventListener("keydown", moveExtractionCorner);
-      document.removeEventListener("keydown", swapExtractionCorner);
+    document.removeEventListener("keydown", moveExtractionCorner);
     };
   }, [extractionFocus]);
 
@@ -224,45 +214,79 @@ export function VideoApp() {
       }
     }
 
-    function toggleAppMenu(event) {
-      if (event.repeat) {return}
-  
-      if (event.code === TOGGLE_APP_MENU_KEY) {
+    
+
+    function toggleAppMenu() {
         
-        if (appMenuVisible === false) {
+      if (appMenuVisible === false) {
           console.log("Toggled On");
           appMenuVisible = !appMenuVisible;
           setShowAppMenu(true);
           forceUpdate();
           console.log(showAppMenu);
-        } else {
+      } else {
           console.log("Toggled Off");
           appMenuVisible = !appMenuVisible;
           setShowAppMenu(false);
           setShowContextMenu(false);
           forceUpdate();
-        }
       }
     }
 
-    
+    function ManipulateFSM(event) {
+      const appFSM = appFSMRef.current
+      const key = event.code;
+      console.log(key);
+  
+      if (appFSM.ref != null) {
+        const element = appFSM.ref.current;
+        if (element != null) {
+          element.style.outline = '#f00 solid 0px';
 
-    function test(event) {
-      console.log(event.code);
+        }
+      }
+  
+  
+      if (key == "ArrowLeft") {
+        appFSM.dispatch("left");
+      } else if (key == "ArrowRight") {
+        appFSM.dispatch("right");
+      } else if (key == "Escape") {
+        appFSM.dispatch("esc");
+      } else if (key == "Enter") {
+        appFSM.dispatch("enter");
+      }
+      console.log(appFSM.state);
+  
+
+      if (appFSM.state == "MENU" && appMenuVisible == false) {
+        toggleAppMenu();
+      }else if (appFSM.state == "APP_CLOSED" && appMenuVisible == true
+      ) {
+        toggleAppMenu();
+      }
+
+      if (appFSM.ref != null) {
+        const element = appFSM.ref.current;
+        if (element != null) {
+          element.style.outline = '#f00 solid 2px';
+
+        }
+      }
     }
     
-    document.addEventListener("keydown", test);
+    document.addEventListener("keydown", ManipulateFSM);
 
 
     changeExtractionFocus();
-    document.addEventListener("keydown", changeExtractionFocusOnKeyDown);
-    document.addEventListener("keydown", toggleAppMenu);
+    //document.addEventListener("keydown", changeExtractionFocusOnKeyDown);
+    //document.addEventListener("keydown", toggleAppMenu);
 
     return () => {
-      document.removeEventListener("keydown", changeExtractionFocusOnKeyDown);
-      document.removeEventListener("keydown", toggleAppMenu);
+      //document.removeEventListener("keydown", changeExtractionFocusOnKeyDown);
+      //document.removeEventListener("keydown", toggleAppMenu);
 
-      document.removeEventListener("keydown", test);
+      //document.removeEventListener("keydown", test);
     };
   }, []);
 
@@ -284,12 +308,12 @@ export function VideoApp() {
 
       {showAppMenu &&
       <Menu 
-       ref={menuRef}
+       optionSelectRef={menuRef}
        extractedText = {extractedText} setExtractedText = {setExtractedText}
        extractedTable = {extractedTable} setExtractedTable = {setExtractedTable} extractionLog = {extractionLog} setExtractionLog = {setExtractionLog}
        canvasRef={canvasRef}
        setShowAppMenu={setShowAppMenu}
-       resizeableRef={resizeableRef} bottomRightCornerRef = {bottomRightCornerRef} topLeftCornerRef = {topLeftCornerRef}
+       resizeableRef={resizeableRef} bottomRightCornerRef = {bottomRightCornerRef} topLeftCornerRef = {topLeftCornerRef} centerFrameRef = {centerFrameRef}
        extractionFocus = {extractionFocus} setExtractionFocus={setExtractionFocus}/>}
       
 
