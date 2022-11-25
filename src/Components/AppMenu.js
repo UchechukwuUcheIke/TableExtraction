@@ -1,10 +1,11 @@
-import { useRef, useState, Fragment,  } from 'react';
+import { useRef, useState, Fragment, useCallback, useEffect  } from 'react';
 import { Resizeable, GlassPane } from './Resizeable';
 import { DropDownList } from './DropDownList';
 import { Frame } from "./Frame.js"
 import './AppMenu.css';
-import { machine, convertToStandardNotation, Table } from '../HelperClasses/helper.js';
+import { convertToStandardNotation, Table } from '../HelperClasses/helper.js';
 import { helperExtractText, getAveragePixelBrightness, turnImageBinary, convertCTXToColorArray, getColumnEdgeCount, getRowEdgeCount, getMode, getSubsections, getMinSubectionWidth } from './EdgeTextExtraction.js';
+import process from 'process';
 const { PSM } = require("tesseract.js");
 
 
@@ -22,8 +23,10 @@ const { PSM } = require("tesseract.js");
  * )
  */
 export function Menu(props) {
-    const processFSMRef = useRef(Object.create(machine));
+    const processFSMRef = props.processFSMRef;
+    const processFSMState = props.processFSMState;
     const canvasRef = props.canvasRef; // Ref to the Canvas object where image extractions from media are stored
+    //const previewCanvasRef = useRef(null);
     const extractionFocus = props.extractionFocus // The image or video being drawn on the canvas
     const resizeableRef = props.resizeableRef; // Ref to the "Frame" around media
     const extractionLog = props.extractionLog; // REACT state referencing the current state of the extraction process according to Tesseract
@@ -32,10 +35,43 @@ export function Menu(props) {
     const bottomRightCornerRef = props.bottomRightCornerRef;
     const topLeftCornerRef = props.topLeftCornerRef;
     const centerFrameRef = props.centerFrameRef;
-    
-    const frameStyle = props.frameStyle;
-    const setFrameStyle = props.setFrameStyle;
 
+    const [, updateState] = useState();
+    //const forceUpdate = useCallback(() => updateState({}), []); // This is an antipattern atm uche, think of a way to get rid of this
+    
+    const [frameDimensions, setFrameDimensions] = useState(getDefaultFrameDimensions());
+
+    useEffect(() => {
+        setFrameDimensions(getDefaultFrameDimensions);
+    }, [extractionFocus]);
+
+
+
+    useEffect(() => {        
+        if (processFSMState === "EXTRACTION_FOCUS") {
+            console.log("HERE!!!!")
+            setFrameDimensions(getDefaultFrameDimensions());
+        }  
+    }, [processFSMState]);
+
+
+
+    function getDefaultFrameDimensions() {
+        const video = extractionFocus;
+        if (video === undefined || video.current === null) {
+            return null;
+        }
+        const styles = window.getComputedStyle(video);
+        
+
+        const videoWidth = parseInt(styles.width, 10);
+        const videoHeight = parseInt(styles.height, 10);
+        const videoTop = parseInt(styles.top, 10);
+        const videoLeft = parseInt(styles.left, 10);
+        const frameDimensions = {width: videoWidth, height: videoHeight, top: videoTop, left: videoLeft};
+
+        return frameDimensions;
+    }
         /**
          * Component rendering the dotted frame around the media being focused on. 
          * Sets the frame's dimensions to be equal to the dimensions of the media on the webpage
@@ -50,6 +86,7 @@ export function Menu(props) {
             if (video === undefined || video.current === null) {
                 return null;
             }
+
             const styles = window.getComputedStyle(video);
             
 
@@ -58,9 +95,10 @@ export function Menu(props) {
             const videoTop = parseInt(styles.top, 10);
             const videoLeft = parseInt(styles.left, 10);
             const parentDimensions = {width: videoWidth, height: videoHeight, top: videoTop, left: videoLeft};
-            console.log(parentDimensions);
             return (
-                <Frame frameRef = {resizeableRef} bottomRightCornerRef = {bottomRightCornerRef} topLeftCornerRef = {topLeftCornerRef} centerFrameRef = {centerFrameRef}
+                <Frame processFSMRef = {processFSMRef} processFSMState = {processFSMState}
+                frameDimensions = {frameDimensions} setFrameDimensions = {setFrameDimensions}
+                frameRef = {resizeableRef} bottomRightCornerRef = {bottomRightCornerRef} topLeftCornerRef = {topLeftCornerRef} centerFrameRef = {centerFrameRef}
                 parentDimensions = {parentDimensions}/>
             )
     }
@@ -70,9 +108,9 @@ export function Menu(props) {
     * Draws the current frame of an image/video onto the canvas object of the App based on the dimensions of the Dotted frame around the media
     * @return canvas
     */
-    function drawCanvas() {
+    function drawCanvas(ref) {
         const resizeableElement = resizeableRef.current; // A Frame around which the image is drawn into the canvas
-        const canvas = canvasRef.current;
+        const canvas = ref || canvasRef.current;
     
         let focusImageWidth;
         let focusImageHeight;
@@ -88,14 +126,14 @@ export function Menu(props) {
         }
         
         // Collect CSS style information for scaling between actual resolution and apparent resolution
-        const resizeableElementStyle = getComputedStyle(resizeableElement)
+        const resizeableElementStyle = frameDimensions;
         const focusStyle = getComputedStyle(extractionFocus);
-        const resizeableTop = parseInt(resizeableElementStyle.top, 10);
+        const resizeableTop = frameDimensions.top
         const focusTop = parseInt(focusStyle.top, 10);
-        const resizeableLeft = parseInt(resizeableElementStyle.left, 10);
+        const resizeableLeft = frameDimensions.left;
         const focusLeft = parseInt(focusStyle.left, 10);
-        const resizeableWidth = parseInt(resizeableElementStyle.width, 10);
-        const resizeableHeight = parseInt(resizeableElementStyle.height, 10);
+        const resizeableWidth = frameDimensions.width;
+        const resizeableHeight = frameDimensions.height;
         const focusWidth = parseInt(focusStyle.width, 10);
         const focusHeight = parseInt(focusStyle.height, 10);
     
@@ -272,13 +310,13 @@ export function Menu(props) {
         console.log("Scaling: " + canvasToImageScaling);
         
         const videoStyle = getComputedStyle(video);
-        const resizeableElementStyle = getComputedStyle(resizeableElement)
-        const resizeableTop = parseInt(resizeableElementStyle.top, 10);
-        const resizeableLeft = parseInt(resizeableElementStyle.left, 10);
+        //const resizeableElementStyle = getComputedStyle(resizeableElement)
+        const resizeableTop = frameDimensions.top;
+        const resizeableLeft = frameDimensions.left;
         const videoTop = parseInt(videoStyle.top, 10);
         const videoLeft = parseInt(videoStyle.left, 10); 
-        const resizeableWidth = parseInt(resizeableElementStyle.width, 10);
-        const resizeableHeight = parseInt(resizeableElementStyle.height, 10);
+        const resizeableWidth = frameDimensions.width;
+        const resizeableHeight = frameDimensions.height;
     
         const rectangleTop = resizeableTop - videoTop;
         const rectangleLeft = resizeableLeft - videoLeft;
@@ -340,153 +378,6 @@ export function Menu(props) {
         return table;
     }
     
-
-    async function onExtractAsText() {
-        const processFSM = processFSMRef.current;
-
-        if (processFSM.state !== "START" || extractionFocus == null) {
-            return;
-        }
-
-        processFSM.dispatch("extractText");
-        props.setExtractedText("TBD");
-
-    }
-
-    async function onExtractAsTable() {
-        const processFSM = processFSMRef.current;
-
-        if (processFSM.state !== "START" || extractionFocus == null) {
-            return;
-        }
-
-        processFSM.dispatch("extractTable")
-        props.setExtractedText("TBD");
-
-        // Update FSM
-        props.setExtractionLog({
-            status: '',
-            progress: 0,
-        })
-    }
-
-    async function onExtractAsNormalTable() {
-        const processFSM = processFSMRef.current;
-        processFSM.dispatch("extractAsNormal");
-
-        const table = await extractTable();
-        props.setExtractedTable(table);
-        
-        processFSM.dispatch("finishExtractingTable");
-    }
-
-    async function onExtractAsNumericalTable() {
-        const processFSM = processFSMRef.current;
-        processFSM.dispatch("extractAsNormal");
-
-        const table = await extractTable(true); 
-        props.setExtractedTable(table);
-        
-        processFSM.dispatch("finishExtractingTable");
-    }
-
-    async function onExtractAsNormalText() {
-        const processFSM = processFSMRef.current;
-        processFSM.dispatch("extractAsNormal");
-
-        const extractedText = await extractText();
-        props.setExtractedText(extractedText);
-        
-        processFSM.dispatch("finishExtractingText")
-    }
-
-    async function onExtractAsNumericalText() {
-        const processFSM = processFSMRef.current;
-        processFSM.dispatch("extractAsNumerical");
-
-        const extractedText = await extractText(true);
-        props.setExtractedText(extractedText);
-        
-        processFSM.dispatch("finishExtractingText");
-    }
-
-    function onScanAsCSVTable() {
-        const processFSM = processFSMRef.current;
-
-        let table = props.extractedTable;
-        console.log(table);
-        const extractedText = table.convertToCSV();
-        props.setExtractedText(extractedText);
-        
-        // Update FSM
-        console.log(processFSM);
-        processFSM.dispatch("finishTableFormatting")
-
-        console.log(processFSM.state)
-    }
-
-    function onScanAsHTMLTable() {
-        const processFSM = processFSMRef.current;
-
-        //console.log(FSM.state)
-        const table = props.extractedTable;
-        console.log(table);
-        const extractedText = table.convertToHTML();
-        props.setExtractedText(extractedText);
-        
-        // Update FSM
-        
-        processFSM.dispatch("finishTableFormatting")
-
-    }
-
-    function onScanAsJSONTable() {
-        //console.log(FSM.state)
-        const processFSM = processFSMRef.current;
-         
-        let table = props.extractedTable;
-        const checkbox = jsonCheckboxRef.current;
-
-        if (checkbox.checked) {
-            const newTable = new Table();
-            newTable.loadTable(table.getContents());
-            newTable.insertRow(0);
-
-            for (let i = 0; i < newTable.getColumns(); i++) {
-                newTable.insertItem(0, i, `Heading-${i + 1}`);
-            }
-
-            table = newTable;
-        }
-
-        const extractedText = table.convertToJSON();
-        props.setExtractedText(extractedText);
-        // Update FSM
-        
-        processFSM.dispatch("finishTableFormatting");
-
-    }
-
-    function onSaveAsImage() {
-        const processFSM = processFSMRef.current;
-
-        if (processFSM.state !== "START") {
-            return;
-        }
-
-        const canvas = canvasRef.current;
-        drawCanvas();
-
-        const canvasUrl = canvas.toDataURL("image/png", 0.5);
-        const createEl = document.createElement('a');
-        createEl.href = canvasUrl;
-        createEl.download = "frame";
-        createEl.click();
-        createEl.remove();
-    }
-
-
-    
     function onExit() {
         const processFSM = processFSMRef.current;
         console.log(processFSM);
@@ -508,24 +399,9 @@ export function Menu(props) {
         }
     }
 
-    function onCancelOperation() {
-        const processFSM = processFSMRef.current;
-        processFSM.dispatch("cancel")
-        props.setExtractedText("");
-    }
-    function onClearOperation() {
-        const processFSM = processFSMRef.current;
-        processFSM.dispatch("reset");
-        props.setExtractedText("");
-    }
 
     function onTextAreaChange(e) {
         props.setExtractedText(e.target.value);
-    }
-
-    function onLanguageInputChange(e) {
-        const language = e.target.value
-        setExtractionLanguage(language);
     }
 
 
@@ -539,14 +415,153 @@ export function Menu(props) {
             el.controls = true; // Renables menu for video players
         }
     }
-    function onChangeExtractionTarget(e) {
+
+    // New functions
+
+    function onChangeExtractionFocus() {
+        const processFSM = processFSMRef.current;
+        processFSM.dispatch("changeExtractionFocus");
+        props.setProcessFSMState(processFSM.state);
+        
+        /** 
         document.ondblclick = changeFocus
         const el = document.querySelector('video');
         el.controls = false; // Disables menu for video players so they can be clicked on to switch extraction target
+        */
+    }
+
+    function onAdjustFrame() {
+        const processFSM = processFSMRef.current;
+        processFSM.dispatch("changeFrameAdjustment");
+        props.setProcessFSMState(processFSM.state);
+    }
+
+    function onExtractText() {
+        const processFSM = processFSMRef.current;
+        processFSM.dispatch("extractText");
+        props.setProcessFSMState(processFSM.state);
+    }
+
+    function onScreenshot() {
+        const processFSM = processFSMRef.current;
+        processFSM.dispatch("screenshot");
+        props.setProcessFSMState(processFSM.state);
+
+        //drawCanvas(previewCanvasRef);
+    }
+    
+    function onTakeScreenshot() {
+        const processFSM = processFSMRef.current;
+        processFSM.dispatch("takeScreenshot");
+        props.setProcessFSMState(processFSM.state);
+
+        const canvas = canvasRef.current;
+        drawCanvas();
+
+        const canvasUrl = canvas.toDataURL("image/png", 0.5);
+        const createEl = document.createElement('a');
+        createEl.href = canvasUrl;
+        createEl.download = "frame";
+        createEl.click();
+        createEl.remove();
+    }
+
+    function onReadjustFrame() {
+        const processFSM = processFSMRef.current;
+        processFSM.dispatch("adjustFrame");
+        props.setProcessFSMState(processFSM.state);
+        // Update screenshot
+    }
+
+    function onNewOperation() {
+        const processFSM = processFSMRef.current;
+        processFSM.dispatch("runNewOperation");
+        props.setProcessFSMState(processFSM.state);
+        
+    }
+
+    function onRepeatOperation() {
+        const processFSM = processFSMRef.current;
+        processFSM.dispatch("repeatOperation");
+        props.setProcessFSMState(processFSM.state);
+    }
+
+    function onExtractTextAsTable() {
+        const processFSM = processFSMRef.current;
+
+        processFSM.dispatch("extractAsTable");
+        props.setProcessFSMState(processFSM.state);
+    }
+
+    function onExtractTextFromFrame() {
+        const processFSM = processFSMRef.current;
+        processFSM.dispatch("extractAsFrame");
+        props.setProcessFSMState(processFSM.state);
+    }
+
+    async function onExtractAsRegularText() {
+        const processFSM = processFSMRef.current;
+
+        const isNumericalText = false;
+        const extractedText = await extractText(isNumericalText);
+        props.setExtractedText(extractedText);
+
+        processFSM.dispatch("extractAsRegularText");
+        props.setProcessFSMState(processFSM.state);
+    }
+
+    async function onExtractAsRegularTable() {
+        const processFSM = processFSMRef.current;
+
+        const isNumericalTable = false
+        const extractedTable = await extractTable(isNumericalTable);
+        props.setExtractedTable(extractedTable);
+
+        processFSM.dispatch("extractAsRegularTable");
+        props.setProcessFSMState(processFSM.state);
+    }
+
+    async function onExtractAsNumericalTable() {
+        const processFSM = processFSMRef.current;
+
+        const isNumericalTable = true
+        const extractedTable = await extractTable(isNumericalTable );
+        props.setExtractedText(extractedTable);
+
+        processFSM.dispatch("extractAsNumericalTable");
+        props.setProcessFSMState(processFSM.state);
+    }
+
+    async function onExtractAsNumericalText() {
+        const processFSM = processFSMRef.current;
+
+        const isNumericalText = true
+        const extractedText = await extractText(isNumericalText);
+        props.setExtractedText(extractedText);
+
+        processFSM.dispatch("extractAsNumericalText");
+        props.setProcessFSMState(processFSM.state);
+    }
+
+    function onConfirm() {
+        const processFSM = processFSMRef.current;
+        processFSM.dispatch("confirm");
+        props.setProcessFSMState(processFSM.state);
+    }
+
+    function onNext() {
+        const processFSM = processFSMRef.current;
+        processFSM.dispatch("next");
+        props.setProcessFSMState(processFSM.state);
+    }
+    function onBack() {
+        const processFSM = processFSMRef.current;
+        processFSM.dispatch("back");
+        props.setProcessFSMState(processFSM.state);
     }
 
     return (
-        <Fragment>
+        <Fragment data-testid = "AppMenu">
             <div id = "Menu" ref={props.optionSelectRef}>
                 <div id = "Heading">
                     <h1> Option Select </h1>
@@ -559,63 +574,86 @@ export function Menu(props) {
 
                 <div id = "Options">
 
-                    {processFSMRef.current.state === "START" &&
+                    {processFSMRef.current.state === "EXTRACTION_FOCUS" &&
                         <Fragment>
-                            <button onClick={onExtractAsText}> Extract Text From Frame </button>
-                            <button onClick={onExtractAsTable}> Extract Text As Table </button>
-                            <button onClick ={onSaveAsImage}> Save Frame as Image </button>
-                            <button onClick = {onChangeExtractionTarget}> Change Extraction Target </button>
+                            <button onClick = {onChangeExtractionFocus}> Change Extraction Focus </button>
+                            
                         </Fragment>
                     }
 
-                    {processFSMRef.current.state === "SELECT_TABLE_EXTRACTION_STYLE" &&
+                    {processFSMRef.current.state === "FRAME" &&
                         <Fragment>
-                            <button onClick={onExtractAsNormalTable} > Extract As Normal Table </button>
-                            <button onClick={onExtractAsNumericalTable}> Extract As Numerical Table </button>
-                        </Fragment>
-                    }
-
-                    {processFSMRef.current.state === "SELECT_TEXT_EXTRACTION_STYLE" &&
-                        <Fragment>
-                            <button onClick={onExtractAsNormalText}> Extract As Normal Text </button>
-                            <button onClick={onExtractAsNumericalText}> Extract As Numerical Text </button>
+                            <button onClick={onAdjustFrame}> Adjust Frame </button>
+                            
                         </Fragment>
                     }
 
 
-                    {(processFSMRef.current.state === "SELECT_TABLE_FORMAT" || processFSMRef.current.state === "FINISH_TABLE_FORMATTING") &&
+                    {(processFSMRef.current.state === "SELECT_PROCEDURE") &&
                         <Fragment>
-                            <button onClick={onScanAsHTMLTable}> Extract Text As HTML Table </button>
-                            <button onClick={onScanAsCSVTable}> Extract Text As CSV Table </button>
-                            <button onClick={onScanAsJSONTable}> Extract Text As JSON Table 
-                                <input ref = {jsonCheckboxRef} type="checkbox" id="JSONAddHeadings"
-                                 name="JSONAddHeadings" value="Add Headings"/>
-                                <label htmlFor="JSONAddHeadings"> Add Default Headings </label>
-                            </button>
+                            <button onClick={onExtractText}> Extract Text </button>
+                            <button onClick={onScreenshot}> Screenshot </button>
                         </Fragment>
                     }
 
-                    {processFSMRef.current.state !== "START" && processFSMRef.current.state !== "FINISH_TEXT_EXTRACTION" &&
-                     processFSMRef.current.state !== "FINISH_TABLE_FORMATTING" &&
-                        <button onClick={onCancelOperation}> Cancel </button>
-                    }
-
-                    {(processFSMRef.current.state === "FINISH_TEXT_EXTRACTION" || processFSMRef.current.state === "FINISH_TABLE_FORMATTING") &&
+                    {(processFSMRef.current.state === "SCREENSHOT") &&
                         <Fragment>
-                            <button onClick={onCopyTextToClipboard}> Copy Text To Clipboard </button>
-                            <button onClick={onClearOperation}> Clear Operation </button> 
+                            <button onClick={onTakeScreenshot}> Take Screenshot </button> 
+                            <button onClick={onReadjustFrame}> Adjust Frame </button> 
                         </Fragment>
                     }
 
-                    {processFSMRef.current.state === "SAVING_FRAME_IMAGE" &&
-                        <button onClick={onClearOperation}> Clear Operation </button> 
+                    {(processFSMRef.current.state === "RESULT") &&
+                        <Fragment>
+                            <button onClick={onNewOperation}> New Operation </button>
+                            <button onClick={onRepeatOperation}> Repeat Operation On New Focus </button> 
+                        </Fragment>
+                    }
+
+                    {(processFSMRef.current.state === "EXTRACT_TEXT") &&
+                        <Fragment>
+                            <button onClick={onExtractTextAsTable}> Extract Text as Table </button>
+                            <button onClick={onExtractTextFromFrame}> Extract Text from Frame </button> 
+                        </Fragment>
+                    }
+
+                    {(processFSMRef.current.state === "EXTRACT_FRAMED_TEXT") &&
+                        <Fragment>
+                            <button onClick={onExtractAsRegularText}> Extract As Regular Text </button>
+                            <button onClick={onExtractAsNumericalText}> Extract As Numerical Text </button> 
+                        </Fragment>
+                    }
+
+                    
+                    {(processFSMRef.current.state === "EXTRACT_TABULAR_TEXT") &&
+                        <Fragment>
+                            <button onClick={onExtractAsRegularTable}> Extract As Regular Table </button>
+                            <button onClick={onExtractAsNumericalTable}> Extract As Numerical Table </button> 
+                        </Fragment>
+                    }
+
+                    {(processFSMRef.current.state === "READJUST_FRAME" || processFSMRef.current.state === "ADJUST_FRAME" 
+                    || processFSMRef.current.state === "READJUST_FRAME" || processFSMRef.current.state === "CHANGE_EXTRACTION_FOCUS"
+                    || processFSMRef.current.state === "CONFIRM_EXTRACTION_TEXT") &&
+                        <button onClick={onConfirm}> Confirm </button> 
+                    }
+
+                    {(processFSMRef.current.state === "EXTRACTION_FOCUS" || processFSMRef.current.state === "FRAME") &&
+                        <button onClick={onNext}> Next </button>
+                    }
+                    
+                    {(processFSMRef.current.state !== "EXTRACTION_FOCUS" && processFSMRef.current.state !== "ADJUST_FRAME" && processFSMRef.current.state !== "READJUST_FRAME" &&
+                        processFSMRef.current.state !== "CHANGE_EXTRACTION_FOCUS" && processFSMRef.current.state != "RESULT") &&
+                        <button onClick={onBack}> Back </button>
                     }
 
                 </div>
 
                 <div id = "OutputPreview">
+      
+                    
 
-                    {(processFSMRef.current.state === "FINISH_TABLE_FORMATTING" || processFSMRef.current.state === "FINISH_TEXT_EXTRACTION") &&
+                    {(processFSMRef.current.state === "CONFIRM_EXTRACTION_TEXT") &&
                         <textarea  onChange = {onTextAreaChange} value={props.extractedText}>  </textarea>
                     }
 
@@ -629,7 +667,7 @@ export function Menu(props) {
                     {(processFSMRef.current.state === "SELECT_TABLE_EXTRACTION_STYLE" || processFSMRef.current.state === "SELECT_TEXT_EXTRACTION_STYLE") &&
                         <Fragment>
                             <label htmlFor="language">Language Setting:</label>
-                            <input list="languages" name="language" id="browser" onChange={onLanguageInputChange} />
+                            <input list="languages" name="language" id="browser"/>
                             <datalist id="languages">
                                 <option value="chi_sim">Chinese - Simplified</option>
                                 <option value="eng">English</option>
@@ -644,8 +682,10 @@ export function Menu(props) {
 
                 
             </div>
-
-            {renderResizeable()};
+                
+            {(processFSMRef.current.state === "CHANGE_EXTRACTION_FOCUS" || processFSMRef.current.state === "EXTRACTION_FOCUS" ||
+             processFSMRef.current.state === "READJUST_FRAME" || processFSMRef.current.state === "ADJUST_FRAME" || processFSMRef.current.state === "FRAME") &&
+                renderResizeable()};
 
         </Fragment>
     )

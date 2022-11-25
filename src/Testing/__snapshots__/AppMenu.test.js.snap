@@ -26,33 +26,7 @@ exports[`ContextMenu matches snapshot 1`] = `
 </div>
 `;
 
-exports[`ContextMenu opens App menu on click 1`] = `
-<div
-  className="context-menu"
-  data-testid="ContextMenu"
-  id="contextMenu"
-  style={
-    Object {
-      "left": undefined,
-      "top": undefined,
-    }
-  }
->
-  <ul>
-    <li>
-       
-      <button
-        onClick={[Function]}
-      >
-        Open Text Extraction
-      </button>
-       
-    </li>
-  </ul>
-</div>
-`;
-
-exports[`matches snapshot 1`] = `
+exports[`ContextMenu opens  1`] = `
 <div
   className="context-menu"
   data-testid="ContextMenu"

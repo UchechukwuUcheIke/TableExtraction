@@ -1,13 +1,23 @@
-import React, { useEffect, useRef } from 'react';
+import React, { Fragment, useEffect, useRef } from 'react';
 import './Frame.css';
 export function Frame(props) {
     const frameRef = props.frameRef;
+    const processFSMRef = props.processFSMRef;
+    const processFSMState = props.processFSMState;
 
     const bottomRightCornerRef = props.bottomRightCornerRef;
     const topLeftCornerRef = props.topLeftCornerRef;
 
     const centerButtonRef = props.centerFrameRef;
     const parentDimensions = props.parentDimensions;
+
+    const frameDimensions = props.frameDimensions;
+
+    const frameTop = frameDimensions.top;
+    const frameLeft = frameDimensions.left;
+    const frameWidth = frameDimensions.width;
+    const frameHeight = frameDimensions.height;
+
     const parentTop = parentDimensions.top;
     const parentLeft = parentDimensions.left;
     const parentWidth = parentDimensions.width;
@@ -22,7 +32,7 @@ export function Frame(props) {
       const bottomRightCorner = bottomRightCornerRef.current;
       const topLeftCorner = topLeftCornerRef.current;
       const center = centerButtonRef.current;
-      const buttonStyles = window.getComputedStyle(bottomRightCorner);
+
   
 
   
@@ -72,6 +82,9 @@ export function Frame(props) {
   
         frame.style.top = `${newTop}px`;
         frame.style.left = `${newLeft}px`;
+
+        const newFrameDimensions = {width: frameDimensions.width, height: frameDimensions.height, top: newTop, left: newLeft};
+        props.setFrameDimensions(newFrameDimensions);
       };
   
       function onMouseUpCenterDrop(event) {
@@ -86,14 +99,12 @@ export function Frame(props) {
         document.addEventListener("mouseup", onMouseUpCenterDrop);
       };
   
-      center.addEventListener("mousedown", onMouseDownCenterPickup);
-      center.addEventListener("dblclick", onCenterButtonClick);
-  
       // Top Left Corner
       function onMouseMoveTopLeftResize(event) {
         let dx = event.clientX - x;
         let dy = event.clientY - y;
-  
+
+        const buttonStyles = window.getComputedStyle(bottomRightCorner);
         const buttonWidth = parseInt(buttonStyles.width, 10);
   
         const frameStyles = window.getComputedStyle(frame);
@@ -114,6 +125,9 @@ export function Frame(props) {
   
         frame.style.width = `${width}px`;
         frame.style.height = `${height}px`;
+
+        const newFrameDimensions = {width: width, height: height, top: frameDimensions.top, left: frameDimensions.left};
+        props.setFrameDimensions(newFrameDimensions);
       };
   
       function onMouseUpTopLeftResize(event) {
@@ -132,7 +146,7 @@ export function Frame(props) {
         document.addEventListener("mouseup", onMouseUpTopLeftResize);
       };
   
-      topLeftCorner.addEventListener("mousedown", onMouseDownTopLeftResize);
+      
   
       // Bottom Right Corner
       function onMouseMoveBottomRightResize(event) {
@@ -166,6 +180,9 @@ export function Frame(props) {
   
         frame.style.width = `${width}px`;
         frame.style.height = `${height}px`;
+
+        const newFrameDimensions = {width: width, height: height, top: frameDimensions.top, left: frameDimensions.left};
+        props.setFrameDimensions(newFrameDimensions);
       };
   
       function onMouseUpBottomRightResize(event) {
@@ -183,21 +200,48 @@ export function Frame(props) {
         document.addEventListener("mousemove", onMouseMoveBottomRightResize);
         document.addEventListener("mouseup", onMouseUpBottomRightResize);
       };
-  
-      bottomRightCorner.addEventListener("mousedown", onMouseDownBottomRightResize);
+      
+
+      if (center) {
+        center.addEventListener("mousedown", onMouseDownCenterPickup);
+        center.addEventListener("dblclick", onCenterButtonClick);
+      }
+
+      if (topLeftCorner) {
+        topLeftCorner.addEventListener("mousedown", onMouseDownTopLeftResize);
+      }
+
+      if (bottomRightCorner) {
+        bottomRightCorner.addEventListener("mousedown", onMouseDownBottomRightResize);
+      }
   
       return () => {
-        bottomRightCorner.removeEventListener("mousedown", onMouseDownBottomRightResize);
-        topLeftCorner.removeEventListener("mousedown", onMouseDownTopLeftResize)
+        if (center) {
+          center.removeEventListener("mousedown", onMouseDownCenterPickup);
+          center.removeEventListener("dblclick", onCenterButtonClick);
+        }
+
+        if (topLeftCorner) {
+          topLeftCorner.removeEventListener("mousedown", onMouseDownTopLeftResize)
+        }
+
+        if (bottomRightCorner) {
+          bottomRightCorner.removeEventListener("mousedown", onMouseDownBottomRightResize);
+        }
+        
       }
-    }, [])
+    }, [processFSMState])
     return (
-      <div ref={frameRef} className = "frame" style={{"top": `${parentTop}px`, "left": `${parentLeft}px`,
-                                                        "width": `${parentWidth}px`, "height": `${parentHeight}px`}}>
-  
-        <button ref={bottomRightCornerRef} id="bottomRight" style={{"right": "0px", "bottom": "0px", "backgroundColor": "white"}}> </button>
-        <button ref={topLeftCornerRef} id="topLeft" style={{"left": "0px", "top": "0px", "backgroundColor": "white"}}> </button>
-        <button ref={centerButtonRef} id="center"> </button>
+      <div ref={frameRef} className = "frame" style={{"top": `${frameTop}px`, "left": `${frameLeft}px`,
+                                                        "width": `${frameWidth}px`, "height": `${frameHeight}px`}}>
+
+      {(processFSMRef.current.state === "READJUST_FRAME" || processFSMRef.current.state === "ADJUST_FRAME") &&
+        <Fragment>                                               
+          <button ref={bottomRightCornerRef} id="bottomRight" style={{"right": "0px", "bottom": "0px", "backgroundColor": "white"}}> </button>
+          <button ref={topLeftCornerRef} id="topLeft" style={{"left": "0px", "top": "0px", "backgroundColor": "white"}}> </button>
+          <button ref={centerButtonRef} id="center"> </button>
+        </Fragment>  
+      }
       </div>
     );
   }

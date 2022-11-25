@@ -1,8 +1,8 @@
-import React, { useReducer, useEffect, useState, useRef, Fragment } from 'react';
+import React, { useReducer, useCallback, useEffect, useState, useRef, Fragment } from 'react';
 import { ContextMenu } from './Components/ContextMenu';
 import { Menu } from './Components/AppMenu';
 import { parse } from 'url';
-import { AppFSMConstructor } from './HelperClasses/helper';
+import { AppFSMConstructor, machine } from './HelperClasses/helper';
 
 // ========================================
 
@@ -22,9 +22,7 @@ import { AppFSMConstructor } from './HelperClasses/helper';
  * )
  */
 export function VideoApp() {
-  const CHANGE_EXTRACTION_FOCUS_KEY = "KeyF";
-  const TOGGLE_APP_MENU_KEY = "KeyE";
-  const SWAP_CORNER_KEY = "KeyR";
+  const CHANGE_EXTRACTION_FOCUS_KEY = "Tab";
   
   const canvasRef = useRef(null); // Ref for the canvas object where 
   const resizeableRef = useRef(null); // Ref for resizeable frame around video
@@ -33,6 +31,11 @@ export function VideoApp() {
   const topLeftCornerRef = useRef(null);
   const centerFrameRef = useRef(null);
   const extractionCornerRef = useRef(topLeftCornerRef);
+  const processFSMRef = useRef(Object.create(machine));
+  const [processFSMState, setProcessFSMState] = useState(processFSMRef.current.state)
+
+  //const [, updateState] = useState();
+  //const forceUpdate = useCallback(() => updateState({}), []); // This is an antipattern atm uche, think of a way to get rid of this
 
   const refsTable = {MENU: menuRef, FRAME: resizeableRef, LEFT_FRAME_CORNER: topLeftCornerRef, CENTER_FRAME: centerFrameRef, RIGHT_FRAME_CORNER: bottomRightCornerRef};
   const appFSMRef = useRef(AppFSMConstructor(refsTable));
@@ -40,9 +43,6 @@ export function VideoApp() {
   let appMenuVisible = false // Keeps track of appMenu's visibility only for the useEffect callback
 
   let focusIndex = useRef(0); // Index for what extraction object to focus on. Is a ref so it is static between rerenders
-  
-  const [, updateState] = React.useState();
-  const forceUpdate = React.useCallback(() => updateState({}), []); // This is an antipattern atm uche, think of a way to get rid of this
 
   const [extractionLog, setExtractionLog] = useState(0);
   const [showAppMenu, setShowAppMenu] = useState(false);
@@ -58,7 +58,7 @@ export function VideoApp() {
 
   function changeExtractionFocus() {
     console.log("Focus changed");
-
+    console.log(focusIndex.current);
     const potentialExtractionFoci = document.querySelectorAll('img, video');
     const mod = potentialExtractionFoci.length
     const newFocus = potentialExtractionFoci[focusIndex.current];
@@ -66,9 +66,6 @@ export function VideoApp() {
 
     focusIndex.current = (focusIndex.current + 1) % mod;
   }
-
-  
-
 
   // Function is executed when user right clicks on page and pops up
   function toggleContextMenu(e) {
@@ -91,7 +88,7 @@ export function VideoApp() {
 
     function moveExtractionCorner(event) {
       console.log(extractionFocus);
-      if (event.repeat) { return}
+      if (event.repeat || (processFSMRef !== "ADJUST_FAME" && processFSMRef !== "READJUST_FRAME")) { return}
 
       const appFSM = appFSMRef.current;
       if (appFSM.state !== "LEFT_FRAME_CORNER" && appFSM.state !== "RIGHT_FRAME_CORNER") {
@@ -207,14 +204,12 @@ export function VideoApp() {
   useEffect(()=>{
   
     function changeExtractionFocusOnKeyDown(event) {
-      if (event.repeat) { return }
-      
+      if (event.repeat || processFSMRef.current.state !== "CHANGE_EXTRACTION_FOCUS") { return }
       if (event.code === CHANGE_EXTRACTION_FOCUS_KEY) {
+        console.log("Changing focus");
         changeExtractionFocus()
       }
     }
-
-    
 
     function toggleAppMenu() {
         
@@ -222,14 +217,12 @@ export function VideoApp() {
           console.log("Toggled On");
           appMenuVisible = !appMenuVisible;
           setShowAppMenu(true);
-          forceUpdate();
           console.log(showAppMenu);
       } else {
           console.log("Toggled Off");
           appMenuVisible = !appMenuVisible;
           setShowAppMenu(false);
           setShowContextMenu(false);
-          forceUpdate();
       }
     }
 
@@ -266,6 +259,7 @@ export function VideoApp() {
         toggleAppMenu();
       }
 
+      
       if (appFSM.ref != null) {
         const element = appFSM.ref.current;
         if (element != null) {
@@ -279,11 +273,11 @@ export function VideoApp() {
 
 
     changeExtractionFocus();
-    //document.addEventListener("keydown", changeExtractionFocusOnKeyDown);
+    document.addEventListener("keydown", changeExtractionFocusOnKeyDown);
     //document.addEventListener("keydown", toggleAppMenu);
 
     return () => {
-      //document.removeEventListener("keydown", changeExtractionFocusOnKeyDown);
+      document.removeEventListener("keydown", changeExtractionFocusOnKeyDown);
       //document.removeEventListener("keydown", toggleAppMenu);
 
       //document.removeEventListener("keydown", test);
@@ -308,6 +302,7 @@ export function VideoApp() {
 
       {showAppMenu &&
       <Menu 
+      processFSMRef = {processFSMRef} processFSMState = {processFSMState} setProcessFSMState = {setProcessFSMState}
        optionSelectRef={menuRef}
        extractedText = {extractedText} setExtractedText = {setExtractedText}
        extractedTable = {extractedTable} setExtractedTable = {setExtractedTable} extractionLog = {extractionLog} setExtractionLog = {setExtractionLog}
@@ -317,7 +312,7 @@ export function VideoApp() {
        extractionFocus = {extractionFocus} setExtractionFocus={setExtractionFocus}/>}
       
 
-      <canvas id = "canvas" ref={canvasRef} width="1920" height="1080"  style={{"left": "1000px","top": "10px",
+      <canvas data-testid = "Canvas" id = "canvas" ref={canvasRef} width="1920" height="1080"  style={{"left": "1000px","top": "10px",
                                                     "width": "800px", "height": "450px"}} />
 
       

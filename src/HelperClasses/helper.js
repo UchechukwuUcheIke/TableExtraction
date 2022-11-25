@@ -163,129 +163,114 @@ export function AppFSMConstructor(refs) {
 * @state  FINISH_TEXT_EXTRACTION
 */
 export const machine = {
-  state: 'START',
+  state: 'EXTRACTION_FOCUS',
   transitions: {
-      START: {
-          extractTable() {
-              this.state = 'SELECT_TABLE_EXTRACTION_STYLE'
-          },
-          saveFrame() {
-              this.state = 'SAVING_FRAME_IMAGE'
-          },
-          extractText() {
-              this.state = 'SELECT_TEXT_EXTRACTION_STYLE'
-          },
-          reset() {
-              this.state = "START";
-          }
+    EXTRACTION_FOCUS: {
+      next() {
+        this.state = "FRAME";
       },
-      SELECT_TABLE_EXTRACTION_STYLE: {
-          extractAsNormal() {
-              this.state = 'EXTRACTING_TABLE_AS_NORMAL';
-          },
-          extractAsNumerical() {
-              this.state = 'EXTRACTING_TABLE_AS_NUMERICAL';
-          },
-          cancel() {
-              this.state = 'START'
-          },
-          reset() {
-              this.state = "START";
-          }
+      changeExtractionFocus(){
+        this.state = "CHANGE_EXTRACTION_FOCUS";
+      }
+    },
+    CHANGE_EXTRACTION_FOCUS: {
+      confirm() {
+        this.state = "EXTRACTION_FOCUS";
       },
-      EXTRACTING_TABLE_AS_NORMAL: {
-          finishExtractingTable() {
-              this.state = 'SELECT_TABLE_FORMAT';
-          },
-          cancel() {
-              this.state = 'START'
-          },
-          reset() {
-              this.state = "START";
-          }
+    },
+    FRAME: {
+      back() {
+        this.state = "EXTRACTION_FOCUS"
       },
-      EXTRACTING_TABLE_AS_NUMERICAL: {
-          finishExtractingTable() {
-              this.state = 'SELECT_TABLE_FORMAT';
-          },
-          cancel() {
-              this.state = 'START'
-          },
-          reset() {
-              this.state = "START";
-          }
+      next() {
+        this.state = "SELECT_PROCEDURE";
       },
-      SELECT_TABLE_FORMAT: {
-          finishTableFormatting() {
-              this.state = 'FINISH_TABLE_FORMATTING';
-          },
-          cancel() {
-              this.state = 'START'
-          },
-          reset() {
-              this.state = "START";
-          }
+      changeFrameAdjustment(){
+        this.state = "ADJUST_FRAME";
+      }
+    },
+    ADJUST_FRAME: {
+      confirm() {
+        this.state = "FRAME";
       },
-      SAVING_FRAME_IMAGE: {
-          reset() {
-              this.state = "START"
-          },
-          cancel() {
-              this.state = 'START'
-          },
-          reset() {
-              this.state = "START";
-          }
+    },
+    SELECT_PROCEDURE: {
+      extractText() {
+        this.state = "EXTRACT_TEXT";
       },
-      SELECT_TEXT_EXTRACTION_STYLE: {
-          extractAsNormal() {
-              this.state = 'EXTRACTING_TEXT_AS_NORMAL';
-          },
-          extractAsNumerical() {
-              this.state = 'EXTRACTING_TEXT_AS_NUMERICAL';
-          },
-          cancel() {
-              this.state = 'START'
-          },
-          reset() {
-              this.state = "START";
-          }
+      screenshot() {
+        this.state = "SCREENSHOT";
       },
-      EXTRACTING_TEXT_AS_NORMAL: {
-          finishExtractingText() {
-              this.state = 'FINISH_TEXT_EXTRACTION';
-          },
-          cancel() {
-              this.state = 'START'
-          },
-          reset() {
-              this.state = "START";
-          }
+      back() {
+        this.state = "FRAME"
       },
-      EXTRACTING_TEXT_AS_NUMERICAL: {
-          finishExtractingText() {
-              this.state = 'FINISH_TEXT_EXTRACTION';
-          },
-          cancel() {
-              this.state = 'START'
-          },
-          reset() {
-              this.state = "START";
-          }
+    },
+    SCREENSHOT: {
+      takeScreenshot() {
+        this.state = "RESULT";
       },
-      FINISH_TEXT_EXTRACTION: {
-          reset() {
-              this.state = "START";
-          }
+      adjustFrame() {
+        this.state = "READJUST_FRAME"
       },
-      FINISH_TABLE_FORMATTING: {
-          reset() {
-              this.state = "START";
-          },
-          finishTableFormatting() {
-              this.state = "FINISH_TABLE_FORMATTING"
-          }
+      back() {
+        this.state = "SELECT_PROCEDURE"
       },
+    },
+    READJUST_FRAME: {
+      confirm() {
+        this.state = "SCREENSHOT";
+      }
+    },
+    RESULT: {
+      runNewOperation() {
+        this.state = "EXTRACTION_FOCUS"
+      },
+      repeatOperation() {
+        this.state = "FRAME"
+      }
+    },
+    EXTRACT_TEXT: {
+      extractAsTable() {
+        this.state = "EXTRACT_TABULAR_TEXT";
+      },
+      extractAsFrame() {
+        this.state = "EXTRACT_FRAMED_TEXT";
+      },
+      back() {
+        this.state = "SELECT_PROCEDURE"
+      },
+    },
+    EXTRACT_FRAMED_TEXT: {
+      extractAsNumericalText() {
+        this.state = "CONFIRM_EXTRACTION_TEXT";
+      },
+      extractAsRegularText() {
+        this.state = "CONFIRM_EXTRACTION_TEXT";
+      },
+      back() {
+        this.state = "EXTRACT_TEXT"
+      },
+    },
+    EXTRACT_TABULAR_TEXT: {
+      extractAsNumericalTable() {
+        this.state = "CONFIRM_EXTRACTION_TEXT"
+      },
+      extractAsRegularTable() {
+        this.state = "CONFIRM_EXTRACTION_TEXT"
+      },
+      back() {
+        this.state = "EXTRACT_TEXT"
+      },
+    },
+    CONFIRM_EXTRACTION_TEXT: {
+      confirm() {
+        this.state = "RESULT"
+      },
+      back() {
+        this.state = "EXTRACT_TEXT"
+      },
+    }
+
 
   },
   dispatch(actionName) {
@@ -313,7 +298,7 @@ export function convertToStandardNotation(textValues) {
   for (let i = 0; i < textValues.length; i++) {
       const text = textValues[i];
       const textLength = text.length;
-      const exponentIdx = text.indexOf("e");
+      const exponentIdx = text.indexOf("^");
       const coefficient = text.slice(0, exponentIdx);
       const exponent = text.slice(exponentIdx + 1, textLength);
       console.log(coefficient);
